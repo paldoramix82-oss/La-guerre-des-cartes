@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"mage"
+display_name = "Mage"
+short_label = "M"
+squad_size = 1
+hp = 25
+damage = 10
+attack_range = 1
+attack_pattern = 2
+zone_size = 2
+move_speed = 1.0
+color = Color(0.7, 0.45, 1, 1)
+design_notes = "Portée GDD : 'Zone 2' (2 cases H ou V). Portée d'attaque non précisée : 1 [PROVISOIRE]. '+2/T' non implémenté : sens à clarifier."

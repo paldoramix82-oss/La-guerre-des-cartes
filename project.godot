@@ -1,0 +1,20 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="La Guerre des Cartes"
+config/description="RTS + deckbuilding — Prototype 1 : carte, déplacements, sélection, combats."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

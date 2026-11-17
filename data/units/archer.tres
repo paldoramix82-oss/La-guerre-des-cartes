@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"archer"
+display_name = "Archer"
+short_label = "A"
+squad_size = 2
+hp = 30
+damage = 20
+attack_range = 3
+attack_pattern = 0
+zone_size = 1
+move_speed = 2.0
+color = Color(0.55, 0.85, 0.4, 1)
+design_notes = ""
