@@ -156,7 +156,7 @@ func tick(delta: float) -> void:
 
 ## Agit sur l'escouade `target_squad`. Si `chase`, se rapproche des cibles hors de portée.
 ## Retourne true si l'individu a une cible à portée.
-func update_action(delta: float, target_squad: Squad, chase: bool) -> bool:
+func update_action(delta: float, target_squad, chase: bool) -> bool:
 	if not _is_valid_target(target):
 		target = null
 	# Préférer une cible à portée ; sinon (poursuite) la plus proche.
@@ -184,8 +184,8 @@ func update_action(delta: float, target_squad: Squad, chase: bool) -> bool:
 
 
 ## Cible valide à portée la plus proche dans `squad_ref` (ou la plus proche tout court si `allow_far`).
-func _pick_target(squad_ref: Squad, allow_far: bool) -> Individual:
-	if squad_ref == null or not is_instance_valid(squad_ref):
+func _pick_target(squad_ref, allow_far: bool) -> Individual:
+	if not is_instance_valid(squad_ref):
 		return null
 	var best: Individual = null
 	var best_d := INF
@@ -204,8 +204,9 @@ func _pick_target(squad_ref: Squad, allow_far: bool) -> Individual:
 	return best
 
 
-func _is_valid_target(m: Individual) -> bool:
-	if m == null or not is_instance_valid(m) or not m.is_alive():
+## `m` n'est pas typé : il peut s'agir d'un individu mort et déjà libéré.
+func _is_valid_target(m) -> bool:
+	if not is_instance_valid(m) or not (m is Individual) or not m.is_alive():
 		return false
 	if data.action == UnitData.ActionType.HEAL:
 		return m.team == team and m.is_wounded()

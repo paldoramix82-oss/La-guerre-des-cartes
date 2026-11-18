@@ -18,5 +18,8 @@ Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. Éta
 
 - Toute valeur non définie par le GDD va dans `scripts/core/game_config.gd` (ou le `.tres` concerné),
   marquée `[PROVISOIRE]`, et est listée dans le document du prototype en cours avec la question ouverte.
-- Lancer les tests : `godot --headless --path . -s res://tests/run_tests.gd` (code de sortie 0 = OK).
+- Lancer les tests : `tests/run.sh <godot>` (code de sortie 0 = OK ; échoue aussi sur toute `SCRIPT ERROR`).
+- Ne jamais passer à une fonction typée un objet qui peut avoir été libéré (unité morte) :
+  vérifier `is_instance_valid()` d'abord, sinon Godot lève « previously freed ».
+- Commandes : tout doit rester jouable au trackpad Mac (un seul bouton, pas de molette).
 - Le code et les commentaires sont en français.

@@ -136,7 +136,7 @@ func order_move_cells(dest_cells: Array) -> void:
 
 ## Attaque (ennemi) ou soigne (allié) l'escouade `other` selon l'action de l'unité.
 ## Retourne false si cette escouade ne peut pas agir sur `other`.
-func order_target(other: Squad) -> bool:
+func order_target(other) -> bool:
 	if not CombatSystem.can_target(self, other):
 		return false
 	target = other
@@ -186,10 +186,11 @@ func _process_action(delta: float) -> void:
 			or (data.action == UnitData.ActionType.HEAL and not target.is_wounded()):
 		order_stop()
 		return
+	var target_squad = target
 	var any_in_range := false
 	for m in members.duplicate():
 		if is_instance_valid(m) and m.is_alive():
-			if m.update_action(delta, target, not _auto_target):
+			if m.update_action(delta, target_squad, not _auto_target):
 				any_in_range = true
 	if _auto_target and not any_in_range:
 		order_stop()

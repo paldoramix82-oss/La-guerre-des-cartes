@@ -28,8 +28,9 @@ static func in_range(actor: Individual, other: Individual) -> bool:
 
 
 ## L'escouade `actor` peut-elle viser l'escouade `other` ?
-static func can_target(actor: Squad, other: Squad) -> bool:
-	if other == null or not is_instance_valid(other) or other == actor or not other.is_alive():
+## `other` n'est pas typé : il peut s'agir d'une escouade détruite (objet libéré).
+static func can_target(actor: Squad, other) -> bool:
+	if not is_instance_valid(other) or not (other is Squad) or other == actor or not other.is_alive():
 		return false
 	if actor.data.action == UnitData.ActionType.HEAL:
 		return other.team == actor.team

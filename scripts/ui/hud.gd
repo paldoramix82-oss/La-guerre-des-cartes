@@ -3,10 +3,22 @@ extends CanvasLayer
 ## Interface du prototype : équipe contrôlée, aide (en haut à gauche) et
 ## escouades sélectionnées avec portrait (en bas).
 
-const HELP := "Clic gauche : sélection · Glisser : rectangle · Maj : ajouter\n" \
-	+ "Clic droit : déplacer / attaquer / soigner (Soigneur)\n" \
-	+ "Espace : stop · Échap : désélectionner · Tab : changer d'équipe (test)\n" \
-	+ "ZQSD/WASD/flèches : caméra · Molette : zoom"
+## Émis par les boutons : &"select_all", &"stop", &"deselect", &"zoom_in", &"zoom_out", &"switch_team".
+signal command(name: StringName)
+
+const HELP := "Clic sur une escouade : la choisir · Glisser : en choisir plusieurs\n" \
+	+ "Puis clic sur le terrain : y aller · Clic sur un ennemi : attaquer\n" \
+	+ "Option + clic sur un allié : soigner (Soigneur)\n" \
+	+ "Vue : glisser à 2 doigts ou flèches · Zoom : pincer ou + / −"
+
+const BUTTONS := [
+	[&"select_all", "Tout choisir", "Cmd + A"],
+	[&"deselect", "Aucun", "Échap"],
+	[&"stop", "Stop", "Espace"],
+	[&"zoom_out", "−", "Touche -"],
+	[&"zoom_in", "+", "Touche +"],
+	[&"switch_team", "Équipe", "Tab : contrôler l'autre joueur (test)"],
+]
 
 var _team_label: Label
 var _selection_box: HBoxContainer
@@ -30,6 +42,25 @@ func _ready() -> void:
 	help_vbox.add_child(help)
 	help_panel.add_child(help_vbox)
 	add_child(help_panel)
+
+	# Barre de boutons (en haut à droite) : toutes les commandes sans clavier.
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 6)
+	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	bar.offset_right = -12
+	bar.offset_top = 12
+	for def in BUTTONS:
+		var b := Button.new()
+		b.text = def[1]
+		b.tooltip_text = def[2]
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 16)
+		b.custom_minimum_size = Vector2(44, 40)
+		var cmd: StringName = def[0]
+		b.pressed.connect(func(): command.emit(cmd))
+		bar.add_child(b)
+	add_child(bar)
 
 	# Barre de sélection en bas de l'écran.
 	_selection_panel = PanelContainer.new()

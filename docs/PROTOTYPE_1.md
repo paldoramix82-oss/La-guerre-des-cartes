@@ -14,12 +14,12 @@ Hors périmètre : ressources, bâtiments, recrutement, jungle/monstres, mana, c
 | Escouades | `scripts/units/squad.gd` | Entité contrôlable : reçoit les ordres et les répartit entre ses individus |
 | Individus | `scripts/units/individual.gd` | Une case par individu : PV, déplacement, action, brûlure, rendu |
 | Combat | `scripts/combat/combat_system.gd` | Portée, géométries d'attaque (simple / cercle / ligne), résolution |
-| Contrôles | `scripts/controls/*.gd` | Sélection clic / rectangle, ordres clic droit, caméra |
+| Contrôles | `scripts/controls/*.gd` | Un seul bouton (trackpad) : clic = choisir puis clic = ordre ; caméra au geste (deux doigts, pincer) ; repère visuel des ordres |
 | Rendu de la carte | `scripts/map/map_renderer.gd` | Sol, arbres/rochers sur les obstacles, décorations (purement visuel) |
 | HUD | `scripts/ui/hud.gd`, `assets/ui/theme.tres` | Aide, cartes des escouades sélectionnées avec portrait |
 | Écran titre | `scenes/title.tscn`, `scripts/ui/title_screen.gd` | Fond, boutons Jouer / Quitter |
 | Musique | `scripts/ui/music_player.gd` | Une piste en boucle par scène (`GameConfig.MUSIC_*`) |
-| Tests | `tests/run_tests.gd` | 80 vérifications headless (dont compilation de tous les scripts et une bataille complète) |
+| Tests | `tests/run_tests.gd`, `tests/run.sh` | 90 vérifications headless (compilation, bataille complète avec libération réelle des unités mortes, commandes) ; `run.sh` échoue sur toute erreur de script |
 
 ### Règles du GDD appliquées
 
@@ -99,6 +99,12 @@ Les tentes et bannières des royaumes sont décoratives (pas de bâtiments avant
 ## Lancer
 
 ```bash
-godot --path .                                      # jouer
-godot --headless --path . -s res://tests/run_tests.gd  # tests
+godot --path .              # jouer (fenêtre agrandie, l'affichage s'adapte à sa taille)
+tests/run.sh <godot>        # tests
 ```
+
+## Corrections
+
+- Plantage « Invalid type in function '_is_valid_target' … previously freed » : une unité visait
+  un ennemi mort et déjà supprimé. Les vérifications d'existence sont faites avant tout appel,
+  et les tests libèrent désormais réellement les unités mortes pour attraper ce type de bug.

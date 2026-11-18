@@ -41,6 +41,8 @@ func _run_all() -> void:
 	_test_heal()
 	_test_healer_auto_heals_and_never_attacks()
 	_test_full_battle_invariants()
+	_test_one_button_controls()
+	_test_dead_target_does_not_crash()
 	print("\n%d vérifications, %d échec(s)" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -73,7 +75,20 @@ func _run_ticks(squads: Array, seconds: float) -> void:
 		for s in squads:
 			if is_instance_valid(s):
 				s.tick(0.05)
+		_flush_deleted()
 		t += 0.05
+
+
+## Comme en fin de frame dans le jeu : libère réellement les nœuds en attente de suppression
+## (queue_free). Sans cela, les tests ne voient jamais d'objets libérés.
+func _flush_deleted() -> void:
+	for n in get_nodes_in_group(Squad.GROUP) + get_nodes_in_group(Individual.GROUP):
+		if is_instance_valid(n) and n.is_queued_for_deletion():
+			n.free()
+	for s in get_nodes_in_group(Squad.GROUP):
+		for c in s.get_children():
+			if c.is_queued_for_deletion():
+				c.free()
 
 
 ## Toutes les cases occupées par des individus vivants immobiles sont distinctes.
@@ -270,7 +285,7 @@ func _test_attack_order_chases_and_kills() -> void:
 	var m := spawn(&"mage", 1, Vector2i(8, 10), [Vector2i(8, 10)])
 	w.order_target(m)
 	_run_ticks([w], 20.0)
-	check(not m.is_alive(), "les guerriers rejoignent et éliminent le mage")
+	check(not is_instance_valid(m) or not m.is_alive(), "les guerriers rejoignent et éliminent le mage")
 	check(w.total_hp() == 200, "guerriers intacts (le mage n'a pas été simulé)")
 	_clear_squads()
 
@@ -353,4 +368,46 @@ func _test_full_battle_invariants() -> void:
 	var alive := squads.filter(func(s): return is_instance_valid(s) and s.is_alive())
 	check(alive.size() < squads.size(), "bataille : des escouades ont été détruites")
 	check(_cells_unique(), "bataille : un individu par case à l'arrêt")
+	_clear_squads()
+
+
+## Commandes à un seul bouton (trackpad) : clic = choisir, puis clic = ordre.
+func _test_one_button_controls() -> void:
+	var sel := SelectionController.new()
+	sel.map = map
+	root.add_child(sel)
+	var w := spawn(&"warrior", 0, Vector2i(5, 5))
+	var h := spawn(&"healer", 0, Vector2i(5, 9), [Vector2i(5, 9)])
+	var e := spawn(&"archer", 1, Vector2i(9, 5))
+	sel._on_click(w.members[0].position, false, false)
+	check(sel.selected == [w], "clic sur une escouade alliée : elle est choisie")
+	sel._on_click(map.cell_to_world(Vector2i(8, 12)), false, false)
+	check(w.state == Squad.State.MOVING, "clic sur le terrain : la sélection s'y déplace")
+	check(sel.selected == [w], "la sélection est conservée après l'ordre")
+	sel._on_click(e.members[0].position, false, false)
+	check(w.state == Squad.State.ACTING and w.target == e, "clic sur un ennemi : attaque")
+	sel._on_click(h.members[0].position, true, false)
+	check(sel.selected.size() == 2, "Maj + clic : ajoute à la sélection")
+	sel._on_click(h.members[0].position, true, false)
+	check(sel.selected == [w], "Maj + clic à nouveau : retire de la sélection")
+	sel.set_selection([h])
+	w.members[0].hp = 10
+	sel._on_click(w.members[0].position, false, true)
+	check(h.state == Squad.State.ACTING and h.target == w, "Option + clic sur un allié blessé : soin")
+	sel.select_all()
+	check(sel.selected.size() == 2, "tout choisir : toutes les escouades du joueur")
+	sel.stop_selected()
+	check(w.state == Squad.State.IDLE, "stop")
+	sel.free()
+	_clear_squads()
+
+
+## Régression : une escouade dont la cible est détruite (et libérée) ne plante pas.
+func _test_dead_target_does_not_crash() -> void:
+	var w := spawn(&"warrior", 0, Vector2i(5, 5))
+	var m := spawn(&"mage", 1, Vector2i(6, 5), [Vector2i(7, 5)])
+	w.order_target(m)
+	m.free()
+	_run_ticks([w], 1.0)
+	check(w.state == Squad.State.IDLE, "cible détruite : l'escouade s'arrête proprement")
 	_clear_squads()

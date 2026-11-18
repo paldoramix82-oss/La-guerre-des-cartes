@@ -15,10 +15,11 @@ func _ready() -> void:
 	selection.map = map
 	selection.selection_changed.connect(hud.on_selection_changed)
 	selection.controlled_team_changed.connect(hud.on_team_changed)
+	hud.command.connect(_on_hud_command)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	_spawn_test_armies()
 	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
-	camera.zoom = Vector2(2.0, 2.0)
+	camera.set_zoom_level(2.0)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
 
 
@@ -41,3 +42,14 @@ func spawn_squad(unit: UnitData, team: int, cell: Vector2i) -> Squad:
 	squads_root.add_child(squad)
 	squad.setup(unit, team, map, cell)
 	return squad
+
+
+## Commandes des boutons du HUD.
+func _on_hud_command(cmd: StringName) -> void:
+	match cmd:
+		&"select_all": selection.select_all()
+		&"deselect": selection.set_selection([])
+		&"stop": selection.stop_selected()
+		&"zoom_in": camera.zoom_in()
+		&"zoom_out": camera.zoom_out()
+		&"switch_team": selection.toggle_team()

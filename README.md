@@ -10,18 +10,26 @@ RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros �
 1. Installer [Godot 4.3+](https://godotengine.org/download) (version standard, pas .NET).
 2. Ouvrir `project.godot` dans Godot (le premier import des assets prend quelques secondes), puis F5 — ou `godot --path .`.
 
+Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
+
 | Action | Contrôle |
 |---|---|
-| Sélectionner | Clic gauche / glisser un rectangle (Maj pour ajouter) |
-| Déplacer / attaquer / soigner | Clic droit sur le sol / un ennemi / un allié (Soigneur) |
-| Stop / désélectionner | Espace / Échap |
-| Caméra | ZQSD (AZERTY) ou WASD, flèches, molette, clic molette |
-| Changer d'équipe contrôlée (test) | Tab |
+| Choisir une escouade | Clic dessus (Maj + clic : ajouter / retirer) |
+| Choisir plusieurs escouades | Glisser un rectangle · bouton **Tout choisir** (Cmd + A) |
+| Déplacer | Escouade choisie, puis clic sur le terrain |
+| Attaquer | Escouade choisie, puis clic sur un ennemi |
+| Soigner (Soigneur) | Option + clic sur un allié |
+| Stop / tout désélectionner | Bouton **Stop** (Espace) / **Aucun** (Échap) |
+| Déplacer la vue | Glisser à deux doigts · flèches · ZQSD (AZERTY) / WASD |
+| Zoom | Pincer · boutons **+** / **−** · touches + / − |
+| Contrôler l'autre joueur (test) | Bouton **Équipe** (Tab) |
+
+Le clic droit (ou clic à deux doigts) reste disponible comme ordre direct.
 
 ## Tests
 
 ```bash
-godot --headless --path . -s res://tests/run_tests.gd
+tests/run.sh /chemin/vers/godot   # échoue aussi s'il y a la moindre erreur de script
 ```
 
 ## Organisation
