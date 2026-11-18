@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/chasseur.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_unit")
@@ -15,4 +16,6 @@ attack_pattern = 0
 zone_size = 1
 move_speed = 2.0
 color = Color(0.55, 0.85, 0.4, 1)
+sprite = ExtResource("2_sprite")
+
 design_notes = ""

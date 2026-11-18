@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/mage.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_unit")
@@ -15,4 +16,7 @@ attack_pattern = 2
 zone_size = 2
 move_speed = 1.0
 color = Color(0.7, 0.45, 1, 1)
-design_notes = "Portée GDD : 'Zone 2' (2 cases H ou V). Portée d'attaque non précisée : 1 [PROVISOIRE]. '+2/T' non implémenté : sens à clarifier."
+sprite = ExtResource("2_sprite")
+burn_damage = 2
+burn_turns = 2
+design_notes = "Zone 2 (2 cases H ou V). 10 dégâts + brûlure de 2 dégâts par tour pendant 2 tours. Portée d'attaque non précisée : 1 [PROVISOIRE]."

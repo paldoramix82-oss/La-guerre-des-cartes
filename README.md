@@ -8,12 +8,12 @@ RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros �
 ## Démarrage
 
 1. Installer [Godot 4.3+](https://godotengine.org/download) (version standard, pas .NET).
-2. Ouvrir `project.godot` dans Godot, puis F5 — ou `godot --path .`.
+2. Ouvrir `project.godot` dans Godot (le premier import des assets prend quelques secondes), puis F5 — ou `godot --path .`.
 
 | Action | Contrôle |
 |---|---|
 | Sélectionner | Clic gauche / glisser un rectangle (Maj pour ajouter) |
-| Déplacer / attaquer | Clic droit sur le sol / sur une escouade ennemie |
+| Déplacer / attaquer / soigner | Clic droit sur le sol / un ennemi / un allié (Soigneur) |
 | Stop / désélectionner | Espace / Échap |
 | Caméra | ZQSD (AZERTY) ou WASD, flèches, molette, clic molette |
 | Changer d'équipe contrôlée (test) | Tab |
@@ -27,9 +27,10 @@ godot --headless --path . -s res://tests/run_tests.gd
 ## Organisation
 
 ```
+assets/            Sprites, interface (theme.tres), polices, musiques
 data/units/        Définitions d'unités (.tres) — ajouter une unité = ajouter un fichier
 docs/              GDD et notes de prototype
-scenes/main.tscn   Scène principale
+scenes/            title.tscn (écran titre, scène de lancement), main.tscn (partie)
 scripts/
   core/            Configuration globale (valeurs provisoires centralisées)
   data/            Classes de données et registres

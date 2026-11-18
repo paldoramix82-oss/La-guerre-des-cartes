@@ -210,6 +210,12 @@ Une escouade est une entité contrôlable unique composée de plusieurs individu
 
 Les statistiques de PV et de dégâts sont individuelles.
 
+**Précisions validées (après la v0.2)**
+
+- **Mage** : 10 dégâts à l'impact, puis une brûlure de 2 dégâts à chaque tour pendant 2 tours.
+- **Soigneur** : la valeur 5 est un **soin** (5 PV rendus), pas des dégâts. Zone 2, portée 3.
+- **Mineur** : il peut combattre (5 dégâts) **et** miner.
+
 Exemple : une escouade de quatre guerriers possède initialement 200 PV au total et inflige 40 dégâts si les quatre guerriers attaquent simultanément.
 
 Lorsqu'un individu meurt, il est retiré de l'escouade.

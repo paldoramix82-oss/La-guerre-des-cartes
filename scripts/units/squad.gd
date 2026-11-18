@@ -7,10 +7,10 @@ extends Node2D
 signal members_changed(squad: Squad)
 signal destroyed(squad: Squad)
 
-enum State { IDLE, MOVING, ATTACKING }
+## ACTING = attaque (ennemi) ou soin (allié) selon `data.action`.
+enum State { IDLE, MOVING, ACTING }
 
 const GROUP := &"squads"
-const MEMBER_RADIUS := 5.0
 
 var data: UnitData
 var team: int = 0
@@ -21,11 +21,14 @@ var member_hp: Array[int] = []
 var state: State = State.IDLE
 var path: Array[Vector2i] = []
 var target: Squad = null
+## Brûlures actives, par type d'unité source : {hits, damage, turns_left, timer}.
+var burns: Dictionary = {}
 ## Cible acquise automatiquement (pas de poursuite hors de portée).
 var _auto_target := false
-var _attack_cooldown := 0.0
+var _action_cooldown := 0.0
 var _repath_timer := 0.0
 var _flash := 0.0
+var _flash_color := Color.WHITE
 
 var selected := false:
 	set(value):
@@ -70,6 +73,18 @@ func total_hp() -> int:
 	return t
 
 
+## Au moins un individu vivant n'a pas tous ses PV.
+func is_wounded() -> bool:
+	for hp in member_hp:
+		if hp < data.hp:
+			return true
+	return false
+
+
+func is_burning() -> bool:
+	return not burns.is_empty()
+
+
 # --- Ordres -----------------------------------------------------------------
 
 func order_move(cell: Vector2i) -> void:
@@ -79,14 +94,17 @@ func order_move(cell: Vector2i) -> void:
 	state = State.MOVING if not path.is_empty() else State.IDLE
 
 
-func order_attack(enemy: Squad) -> void:
-	if enemy == null or enemy == self or enemy.team == team:
-		return
-	target = enemy
+## Attaque (ennemi) ou soigne (allié) `other` selon l'action de l'unité.
+## Retourne false si cette escouade ne peut pas agir sur `other`.
+func order_target(other: Squad) -> bool:
+	if not CombatSystem.can_target(self, other):
+		return false
+	target = other
 	_auto_target = false
 	path.clear()
 	_repath_timer = 0.0
-	state = State.ATTACKING
+	state = State.ACTING
+	return true
 
 
 func order_stop() -> void:
@@ -95,11 +113,11 @@ func order_stop() -> void:
 	state = State.IDLE
 
 
-# --- Dégâts -----------------------------------------------------------------
+# --- Dégâts et soins ---------------------------------------------------------
 
 ## Reçoit `count` coups de `damage` PV, chacun sur un individu (GDD §5.1).
 func take_hits(count: int, damage: int) -> void:
-	if not is_alive():
+	if not is_alive() or damage <= 0:
 		return
 	for i in count:
 		if member_hp.is_empty():
@@ -107,12 +125,43 @@ func take_hits(count: int, damage: int) -> void:
 		member_hp[0] -= damage
 		if member_hp[0] <= 0:
 			member_hp.remove_at(0)
-	_flash = 0.15
+	_flash_hit(Color.WHITE)
 	members_changed.emit(self)
-	queue_redraw()
 	if member_hp.is_empty():
 		destroyed.emit(self)
 		queue_free()
+
+
+## Reçoit `count` soins de `amount` PV, chacun sur l'individu le plus blessé.
+func heal(count: int, amount: int) -> void:
+	if not is_alive() or amount <= 0:
+		return
+	for i in count:
+		var idx := _most_wounded_index()
+		if idx < 0:
+			break
+		member_hp[idx] = mini(data.hp, member_hp[idx] + amount)
+	_flash_hit(Color(0.5, 1, 0.5))
+	members_changed.emit(self)
+
+
+## Applique (ou renouvelle) une brûlure : `hits` coups de `damage` par tour pendant `turns` tours.
+func apply_burn(source: StringName, hits: int, damage: int, turns: int) -> void:
+	burns[source] = {"hits": hits, "damage": damage, "turns_left": turns, "timer": GameConfig.SECONDS_PER_TURN}
+
+
+func _most_wounded_index() -> int:
+	var best := -1
+	for i in member_hp.size():
+		if member_hp[i] < data.hp and (best < 0 or member_hp[i] < member_hp[best]):
+			best = i
+	return best
+
+
+func _flash_hit(color: Color) -> void:
+	_flash = 0.15
+	_flash_color = color
+	queue_redraw()
 
 
 # --- Simulation -------------------------------------------------------------
@@ -125,10 +174,13 @@ func _physics_process(delta: float) -> void:
 func tick(delta: float) -> void:
 	if not is_alive():
 		return
-	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	_action_cooldown = maxf(0.0, _action_cooldown - delta)
 	if _flash > 0.0:
 		_flash -= delta
 		queue_redraw()
+	_process_burns(delta)
+	if not is_alive():
+		return
 	match state:
 		State.IDLE:
 			_auto_acquire()
@@ -136,20 +188,44 @@ func tick(delta: float) -> void:
 			_follow_path(delta)
 			if path.is_empty():
 				state = State.IDLE
-		State.ATTACKING:
-			_process_attack(delta)
+		State.ACTING:
+			_process_action(delta)
 
 
-func _process_attack(delta: float) -> void:
+func _process_burns(delta: float) -> void:
+	for source in burns.keys():
+		var b: Dictionary = burns[source]
+		b.timer -= delta
+		if b.timer > 0.0:
+			continue
+		b.timer += GameConfig.SECONDS_PER_TURN
+		b.turns_left -= 1
+		if b.turns_left <= 0:
+			burns.erase(source)
+		take_hits(b.hits, b.damage)
+		if not is_alive():
+			return
+	queue_redraw()
+
+
+func _process_action(delta: float) -> void:
 	if not is_instance_valid(target) or not target.is_alive():
+		order_stop()
+		return
+	var healing := data.action == UnitData.ActionType.HEAL
+	if healing and not target.is_wounded():
 		order_stop()
 		return
 	if CombatSystem.in_range(self, target):
 		path.clear()
 		_snap_to_cell(delta)
-		if _attack_cooldown <= 0.0:
-			CombatSystem.perform_attack(self, target, get_tree().get_nodes_in_group(GROUP))
-			_attack_cooldown = GameConfig.seconds_per_attack()
+		if _action_cooldown <= 0.0:
+			var squads := get_tree().get_nodes_in_group(GROUP)
+			if healing:
+				CombatSystem.perform_heal(self, target, squads)
+			else:
+				CombatSystem.perform_attack(self, target, squads)
+			_action_cooldown = GameConfig.seconds_per_attack()
 		return
 	if _auto_target:
 		order_stop()
@@ -161,21 +237,25 @@ func _process_attack(delta: float) -> void:
 	_follow_path(delta)
 
 
-## Escouade inactive : attaque l'ennemi à portée le plus proche, sans le poursuivre.
+## Escouade inactive : agit sur la cible valide la plus proche à portée
+## (ennemi pour l'attaque, allié blessé pour le soin), sans la poursuivre.
 func _auto_acquire() -> void:
 	if not is_inside_tree():
 		return
+	var healing := data.action == UnitData.ActionType.HEAL
 	var best: Squad = null
 	var best_d := 1 << 30
 	for s in get_tree().get_nodes_in_group(GROUP):
-		if s == self or not (s is Squad) or s.team == team or not s.is_alive():
+		if not (s is Squad) or not CombatSystem.can_target(self, s):
+			continue
+		if healing and not s.is_wounded():
 			continue
 		var d := CombatSystem.grid_distance(get_cell(), s.get_cell())
 		if d <= data.attack_range and d < best_d:
 			best = s
 			best_d = d
 	if best:
-		order_attack(best)
+		order_target(best)
 		_auto_target = true
 
 
@@ -193,7 +273,7 @@ func _follow_path(delta: float) -> void:
 			step = 0.0
 
 
-## Recentre l'escouade sur sa case quand elle s'arrête pour combattre.
+## Recentre l'escouade sur sa case quand elle s'arrête pour agir.
 func _snap_to_cell(delta: float) -> void:
 	var dest := map.cell_to_world(get_cell())
 	position = position.move_toward(dest, GameConfig.move_speed_px(data.move_speed) * delta)
@@ -206,8 +286,8 @@ func _member_offsets(n: int) -> Array[Vector2]:
 	match n:
 		1: return [Vector2.ZERO]
 		2: return [Vector2(-o, 0), Vector2(o, 0)]
-		3: return [Vector2(-o, -o), Vector2(o, -o), Vector2(0, o)]
-		_: return [Vector2(-o, -o), Vector2(o, -o), Vector2(-o, o), Vector2(o, o)]
+		3: return [Vector2(-o, -o * 0.6), Vector2(o, -o * 0.6), Vector2(0, o * 0.6)]
+		_: return [Vector2(-o, -o * 0.6), Vector2(o, -o * 0.6), Vector2(-o, o * 0.6), Vector2(o, o * 0.6)]
 
 
 func _draw() -> void:
@@ -216,17 +296,35 @@ func _draw() -> void:
 	var team_color: Color = GameConfig.TEAM_COLORS[team]
 	var half := GameConfig.TILE_SIZE * 0.5
 	if selected:
-		draw_arc(Vector2.ZERO, half * 0.95, 0, TAU, 32, Color.WHITE, 2.0)
-	var font := ThemeDB.fallback_font
+		draw_set_transform(Vector2(0, half * 0.55), 0.0, Vector2(1, 0.45))
+		draw_arc(Vector2.ZERO, half * 0.95, 0, TAU, 32, Color.WHITE, 3.0)
+		draw_set_transform(Vector2.ZERO)
+	var modulate_color := Color.WHITE
+	if _flash > 0.0:
+		modulate_color = _flash_color * 1.6
+	elif is_burning():
+		modulate_color = Color(1.0, 0.65, 0.45)
 	var offsets := _member_offsets(alive_count())
 	for i in mini(offsets.size(), alive_count()):
-		var p: Vector2 = offsets[i]
-		draw_circle(p, MEMBER_RADIUS + 1.5, team_color)
-		draw_circle(p, MEMBER_RADIUS, Color.WHITE if _flash > 0.0 else data.color)
-	draw_string(font, Vector2(-half, half + 1), data.short_label, HORIZONTAL_ALIGNMENT_CENTER,
-			GameConfig.TILE_SIZE, 10, Color(1, 1, 1, 0.9))
+		_draw_member(offsets[i], team_color, modulate_color)
 	# Barre de PV totale de l'escouade.
 	var ratio := float(total_hp()) / float(data.max_total_hp())
-	var bar := Rect2(Vector2(-half + 3, -half - 2), Vector2(GameConfig.TILE_SIZE - 6, 3))
-	draw_rect(bar, Color(0, 0, 0, 0.7))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y)), team_color.lerp(Color.WHITE, 0.2))
+	var bar := Rect2(Vector2(-half + 4, -half - 6), Vector2(GameConfig.TILE_SIZE - 8, 4))
+	draw_rect(bar.grow(1), Color(0, 0, 0, 0.75))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * ratio, bar.size.y)), team_color.lerp(Color.WHITE, 0.15))
+
+
+func _draw_member(p: Vector2, team_color: Color, tint: Color) -> void:
+	# Socle aux couleurs de l'équipe sous les pieds.
+	draw_set_transform(p + Vector2(0, 9), 0.0, Vector2(1, 0.4))
+	draw_circle(Vector2.ZERO, 8.0, Color(team_color, 0.85))
+	draw_set_transform(Vector2.ZERO)
+	if data.sprite == null:
+		draw_circle(p, 6.0, data.color)
+		return
+	var size := data.sprite.get_size()
+	# L'équipe 2 regarde vers la gauche.
+	var flip := -1.0 if team == 1 else 1.0
+	draw_set_transform(p, 0.0, Vector2(flip, 1))
+	draw_texture(data.sprite, -size * 0.5, tint)
+	draw_set_transform(Vector2.ZERO)

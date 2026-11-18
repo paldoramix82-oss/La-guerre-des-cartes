@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/soigneur.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_unit")
@@ -9,10 +10,13 @@ display_name = "Soigneur"
 short_label = "S"
 squad_size = 1
 hp = 35
-damage = 5
+damage = 0
 attack_range = 3
 attack_pattern = 2
 zone_size = 2
 move_speed = 2.0
 color = Color(1, 0.9, 0.45, 1)
-design_notes = "GDD : Dégâts 5, Zone 2, portée 3. Le soin n'est pas décrit dans le GDD : non implémenté, à clarifier."
+sprite = ExtResource("2_sprite")
+action = 1
+heal_amount = 5
+design_notes = "Soigne 5 PV, Zone 2, portée 3. N'inflige pas de dégâts."

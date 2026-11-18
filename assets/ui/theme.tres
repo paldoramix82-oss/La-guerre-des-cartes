@@ -1,0 +1,104 @@
+[gd_resource type="Theme" load_steps=17 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/AlegreyaSans-Regular.ttf" id="1_font"]
+[ext_resource type="FontFile" path="res://assets/fonts/Cinzel.ttf" id="2_title"]
+[ext_resource type="Texture2D" path="res://assets/ui/panel.png" id="3_panel"]
+[ext_resource type="Texture2D" path="res://assets/ui/button_gold.png" id="4_btn"]
+[ext_resource type="Texture2D" path="res://assets/ui/button_gold_hover.png" id="5_btn_h"]
+[ext_resource type="Texture2D" path="res://assets/ui/button_gold_pressed.png" id="6_btn_p"]
+[ext_resource type="Texture2D" path="res://assets/ui/button_disabled.png" id="7_btn_d"]
+[ext_resource type="Texture2D" path="res://assets/ui/slot.png" id="8_slot"]
+
+[sub_resource type="StyleBoxTexture" id="panel"]
+texture = ExtResource("3_panel")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxTexture" id="btn"]
+texture = ExtResource("4_btn")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+content_margin_left = 24.0
+content_margin_top = 10.0
+content_margin_right = 24.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="btn_h"]
+texture = ExtResource("5_btn_h")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+content_margin_left = 24.0
+content_margin_top = 10.0
+content_margin_right = 24.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="btn_p"]
+texture = ExtResource("6_btn_p")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+content_margin_left = 24.0
+content_margin_top = 10.0
+content_margin_right = 24.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="btn_d"]
+texture = ExtResource("7_btn_d")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 12.0
+content_margin_left = 24.0
+content_margin_top = 10.0
+content_margin_right = 24.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxEmpty" id="focus"]
+
+[sub_resource type="StyleBoxTexture" id="slot"]
+texture = ExtResource("8_slot")
+texture_margin_left = 10.0
+texture_margin_top = 10.0
+texture_margin_right = 10.0
+texture_margin_bottom = 10.0
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[resource]
+default_font = ExtResource("1_font")
+default_font_size = 16
+Button/colors/font_color = Color(0.22, 0.12, 0.04, 1)
+Button/colors/font_hover_color = Color(0.22, 0.12, 0.04, 1)
+Button/colors/font_pressed_color = Color(0.15, 0.08, 0.02, 1)
+Button/colors/font_focus_color = Color(0.22, 0.12, 0.04, 1)
+Button/font_sizes/font_size = 22
+Button/fonts/font = ExtResource("2_title")
+Button/styles/disabled = SubResource("btn_d")
+Button/styles/focus = SubResource("focus")
+Button/styles/hover = SubResource("btn_h")
+Button/styles/normal = SubResource("btn")
+Button/styles/pressed = SubResource("btn_p")
+Label/colors/font_color = Color(0.93, 0.9, 1, 1)
+Label/colors/font_shadow_color = Color(0, 0, 0, 0.6)
+Label/constants/shadow_offset_x = 1
+Label/constants/shadow_offset_y = 1
+PanelContainer/styles/panel = SubResource("panel")
+SlotPanel/base_type = &"PanelContainer"
+SlotPanel/styles/panel = SubResource("slot")
+TitleLabel/base_type = &"Label"
+TitleLabel/colors/font_color = Color(1, 0.84, 0.4, 1)
+TitleLabel/font_sizes/font_size = 18
+TitleLabel/fonts/font = ExtResource("2_title")

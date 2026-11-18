@@ -1,6 +1,7 @@
 class_name GameMap
 extends Node2D
 ## Grille de la carte : terrain, conversions case <-> monde et pathfinding (GDD §2).
+## Le rendu est délégué à MapRenderer.
 ##
 ## La disposition actuelle est un PLACEHOLDER [PROVISOIRE] : le GDD (§13) laisse
 ## dimensions, génération et obstacles à définir. Elle reprend seulement la
@@ -8,13 +9,6 @@ extends Node2D
 
 enum Terrain { KINGDOM, JUNGLE, WATER, FORD, ROCK }
 
-const TERRAIN_COLORS := {
-	Terrain.KINGDOM: Color(0.42, 0.55, 0.3),
-	Terrain.JUNGLE: Color(0.17, 0.36, 0.2),
-	Terrain.WATER: Color(0.15, 0.35, 0.65),
-	Terrain.FORD: Color(0.45, 0.55, 0.65),
-	Terrain.ROCK: Color(0.35, 0.33, 0.32),
-}
 const BLOCKING_TERRAIN := [Terrain.WATER, Terrain.ROCK]
 
 var width: int = GameConfig.MAP_WIDTH
@@ -23,9 +17,15 @@ var tiles := PackedInt32Array()
 var astar := AStarGrid2D.new()
 
 
+var renderer: MapRenderer
+
+
 func _ready() -> void:
 	if tiles.is_empty():
 		generate_placeholder_layout()
+	renderer = MapRenderer.new()
+	renderer.map = self
+	add_child(renderer)
 
 
 # --- Génération -------------------------------------------------------------
@@ -57,7 +57,8 @@ func generate_placeholder_layout() -> void:
 				_set_tile(Vector2i(width - 1 - x, height - 1 - y), Terrain.ROCK)
 
 	_rebuild_navigation()
-	queue_redraw()
+	if renderer:
+		renderer.queue_redraw()
 
 
 func _set_tile(cell: Vector2i, terrain: int) -> void:
@@ -154,22 +155,3 @@ func spread_cells(center: Vector2i, count: int, taken: Array = []) -> Array[Vect
 						return result
 		r += 1
 	return result
-
-
-# --- Rendu ------------------------------------------------------------------
-
-func _draw() -> void:
-	var ts := GameConfig.TILE_SIZE
-	for y in height:
-		for x in width:
-			var cell := Vector2i(x, y)
-			draw_rect(Rect2(Vector2(cell) * ts, Vector2(ts, ts)), TERRAIN_COLORS[get_terrain(cell)])
-	var line := Color(0, 0, 0, 0.12)
-	for x in range(width + 1):
-		draw_line(Vector2(x * ts, 0), Vector2(x * ts, height * ts), line)
-	for y in range(height + 1):
-		draw_line(Vector2(0, y * ts), Vector2(width * ts, y * ts), line)
-	# Frontières des royaumes.
-	var border := Color(1, 1, 1, 0.35)
-	for bx in [GameConfig.KINGDOM_DEPTH, width - GameConfig.KINGDOM_DEPTH]:
-		draw_line(Vector2(bx * ts, 0), Vector2(bx * ts, height * ts), border, 2.0)

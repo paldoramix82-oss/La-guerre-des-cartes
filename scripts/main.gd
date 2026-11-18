@@ -17,7 +17,10 @@ func _ready() -> void:
 	selection.controlled_team_changed.connect(hud.on_team_changed)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	_spawn_test_armies()
-	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH, map.height / 2))
+	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
+	camera.zoom = Vector2(1.5, 1.5)
+	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
+
 
 
 func _spawn_test_armies() -> void:

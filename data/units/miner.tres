@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/briseur.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_unit")
@@ -15,4 +16,6 @@ attack_pattern = 0
 zone_size = 1
 move_speed = 4.0
 color = Color(0.6, 0.6, 0.7, 1)
-design_notes = "Rôle économique : Prototype 2."
+sprite = ExtResource("2_sprite")
+can_mine = true
+design_notes = "Combat et minage. Le minage arrive au Prototype 2 (production des mines à définir)."

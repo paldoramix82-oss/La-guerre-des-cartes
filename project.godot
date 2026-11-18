@@ -5,7 +5,7 @@ config_version=5
 
 config/name="La Guerre des Cartes"
 config/description="RTS + deckbuilding — Prototype 1 : carte, déplacements, sélection, combats."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.3")
 
 [display]
@@ -14,7 +14,13 @@ window/size/viewport_width=1600
 window/size/viewport_height=900
 window/stretch/aspect="expand"
 
+
+[gui]
+
+theme/custom="res://assets/ui/theme.tres"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

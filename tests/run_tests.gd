@@ -22,6 +22,7 @@ func _run_all() -> void:
 	root.add_child(map)
 	if map.tiles.is_empty():
 		map.generate_placeholder_layout()
+	_test_all_scripts_compile()
 	_test_unit_data_matches_gdd()
 	_test_squad_totals()
 	_test_individual_damage_and_removal()
@@ -32,6 +33,10 @@ func _run_all() -> void:
 	_test_pathfinding_avoids_water()
 	_test_movement_speed()
 	_test_attack_order_chases_and_kills()
+	_test_mage_burn()
+	_test_burn_refresh()
+	_test_heal()
+	_test_healer_auto_heals_and_never_attacks()
 	print("\n%d vérifications, %d échec(s)" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -62,7 +67,7 @@ func _test_unit_data_matches_gdd() -> void:
 		&"archer": [2, 30, 20, 3, 2.0],
 		&"cavalier": [2, 75, 15, 1, 4.0],
 		&"mage": [1, 25, 10, 1, 1.0],
-		&"healer": [1, 35, 5, 3, 2.0],
+		&"healer": [1, 35, 0, 3, 2.0],
 		&"miner": [1, 50, 5, 1, 4.0],
 	}
 	check(UnitDatabase.load_all().size() == expected.size(), "6 unités chargées")
@@ -74,6 +79,12 @@ func _test_unit_data_matches_gdd() -> void:
 		var e: Array = expected[id]
 		check([u.squad_size, u.hp, u.damage, u.attack_range, u.move_speed] == e,
 				"%s conforme au GDD (%s)" % [id, e])
+		check(u.sprite != null, "%s a un sprite" % id)
+	var mage := UnitDatabase.get_unit(&"mage")
+	check(mage.burn_damage == 2 and mage.burn_turns == 2, "mage : brûlure 2 dégâts x 2 tours")
+	var healer := UnitDatabase.get_unit(&"healer")
+	check(healer.action == UnitData.ActionType.HEAL and healer.heal_amount == 5, "soigneur : soin de 5")
+	check(UnitDatabase.get_unit(&"miner").can_mine, "mineur : peut miner")
 
 
 func _test_squad_totals() -> void:
@@ -162,7 +173,7 @@ func _test_attack_order_chases_and_kills() -> void:
 	var w := spawn(&"warrior", 0, Vector2i(2, 10))
 	var m := spawn(&"mage", 1, Vector2i(7, 10))
 	m.state = Squad.State.IDLE
-	w.order_attack(m)
+	w.order_target(m)
 	var t := 0.0
 	while is_instance_valid(m) and m.is_alive() and t < 20.0:
 		w.tick(0.05)
@@ -170,3 +181,95 @@ func _test_attack_order_chases_and_kills() -> void:
 	check(not m.is_alive(), "le guerrier rejoint et élimine le mage")
 	check(w.total_hp() == 200 or w.alive_count() == 4, "guerrier intact (le mage n'a pas été simulé)")
 	_clear_squads()
+
+
+func _run_ticks(squads: Array, seconds: float) -> void:
+	var t := 0.0
+	while t < seconds - 0.0001:
+		for s in squads:
+			if is_instance_valid(s):
+				s.tick(0.05)
+		t += 0.05
+
+
+func _test_mage_burn() -> void:
+	var m := spawn(&"mage", 0, Vector2i(5, 5))
+	var w := spawn(&"warrior", 1, Vector2i(6, 5))
+	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
+	check(w.total_hp() == 190, "mage : 10 dégâts immédiats")
+	check(w.is_burning(), "mage : la cible brûle")
+	w.state = Squad.State.MOVING  # empêche la riposte automatique pendant le test
+	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
+	check(w.total_hp() == 188, "brûlure : 2 dégâts au 1er tour (%d)" % w.total_hp())
+	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
+	check(w.total_hp() == 186, "brûlure : 2 dégâts au 2e tour (%d)" % w.total_hp())
+	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 2)
+	check(w.total_hp() == 186 and not w.is_burning(), "brûlure terminée après 2 tours")
+	_clear_squads()
+
+
+func _test_burn_refresh() -> void:
+	var m := spawn(&"mage", 0, Vector2i(5, 5))
+	var w := spawn(&"warrior", 1, Vector2i(6, 5))
+	w.state = Squad.State.MOVING
+	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
+	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
+	check(w.burns.size() == 1, "deux brûlures du mage ne se cumulent pas")
+	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 3)
+	check(w.total_hp() == 200 - 20 - 4, "brûlure renouvelée : 2 tours seulement (%d)" % w.total_hp())
+	_clear_squads()
+
+
+func _test_heal() -> void:
+	var h := spawn(&"healer", 0, Vector2i(5, 5))
+	var w := spawn(&"warrior", 0, Vector2i(7, 5))
+	var enemy := spawn(&"warrior", 1, Vector2i(8, 5))
+	w.member_hp = [50, 42, 30]  # un guerrier déjà mort, deux blessés
+	enemy.member_hp = [40, 50, 50, 50]
+	CombatSystem.perform_heal(h, w, get_nodes_in_group(Squad.GROUP))
+	check(w.member_hp == [50, 42, 35], "soin : +5 PV sur l'individu le plus blessé")
+	check(w.alive_count() == 3, "soin : pas de résurrection")
+	check(enemy.total_hp() == 190, "soin : les ennemis de la zone ne sont pas soignés")
+	w.member_hp = [50, 48]
+	CombatSystem.perform_heal(h, w, get_nodes_in_group(Squad.GROUP))
+	check(w.member_hp == [50, 50], "soin : plafonné aux PV max")
+	check(not CombatSystem.can_target(h, enemy), "soigneur : ne cible pas un ennemi")
+	check(not w.order_target(h) or w.team != h.team, "guerrier : ne cible pas un allié")
+	_clear_squads()
+
+
+func _test_healer_auto_heals_and_never_attacks() -> void:
+	var h := spawn(&"healer", 0, Vector2i(5, 5))
+	var w := spawn(&"warrior", 0, Vector2i(6, 5))
+	var enemy := spawn(&"archer", 1, Vector2i(7, 5))
+	enemy.state = Squad.State.MOVING  # immobile et passif
+	w.state = Squad.State.MOVING
+	w.member_hp = [50, 50, 50, 20]
+	_run_ticks([h], GameConfig.SECONDS_PER_TURN * 3)
+	check(w.total_hp() > 170, "soigneur inactif : soigne automatiquement un allié blessé")
+	check(enemy.total_hp() == 60, "soigneur : n'attaque jamais")
+	_clear_squads()
+
+
+## Charge tous les scripts et scènes du projet : détecte les erreurs de compilation.
+func _test_all_scripts_compile() -> void:
+	for dir_path in ["res://scripts", "res://scenes"]:
+		for file in _list_files(dir_path):
+			if file.ends_with(".gd"):
+				var script: GDScript = load(file)
+				check(script != null and script.can_instantiate(), "compile : %s" % file)
+			elif file.ends_with(".tscn"):
+				var scene: PackedScene = load(file)
+				check(scene != null and scene.can_instantiate(), "scène : %s" % file)
+
+
+func _list_files(path: String) -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return out
+	for f in dir.get_files():
+		out.append(path + "/" + f)
+	for d in dir.get_directories():
+		out.append_array(_list_files(path + "/" + d))
+	return out

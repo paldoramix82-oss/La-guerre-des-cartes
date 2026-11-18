@@ -4,7 +4,7 @@ extends Node2D
 ##   Clic gauche        : sélectionner une escouade
 ##   Glisser gauche     : sélection rectangulaire
 ##   Maj + clic/glisser : ajouter à la sélection
-##   Clic droit         : déplacer / attaquer l'escouade ennemie visée
+##   Clic droit         : déplacer / attaquer un ennemi / soigner un allié (Soigneur)
 ##   Espace : stop · Échap : désélectionner · Tab : changer d'équipe contrôlée (test)
 
 signal selection_changed(selected: Array[Squad])
@@ -99,19 +99,22 @@ func squad_at(world_pos: Vector2) -> Squad:
 func issue_order_at(world_pos: Vector2) -> void:
 	if selected.is_empty():
 		return
+	# Clic sur une escouade : chaque escouade qui peut agir dessus (attaque d'un
+	# ennemi, soin d'un allié) le fait ; les autres se déplacent vers ce point.
 	var clicked := squad_at(world_pos)
-	if clicked and clicked.team != controlled_team:
-		for s in selected:
-			s.order_attack(clicked)
+	var movers: Array = []
+	for s in selected:
+		if clicked == null or not s.order_target(clicked):
+			movers.append(s)
+	if movers.is_empty():
 		return
 	# Déplacement de groupe : une case distincte par escouade autour du point visé.
 	var center := map.world_to_cell(world_pos)
-	var cells := map.spread_cells(center, selected.size())
-	var ordered := selected.duplicate()
+	var cells := map.spread_cells(center, movers.size())
 	var center_world := map.cell_to_world(center)
-	ordered.sort_custom(func(a, b): return a.position.distance_squared_to(center_world) < b.position.distance_squared_to(center_world))
-	for i in ordered.size():
-		ordered[i].order_move(cells[i] if i < cells.size() else center)
+	movers.sort_custom(func(a, b): return a.position.distance_squared_to(center_world) < b.position.distance_squared_to(center_world))
+	for i in movers.size():
+		movers[i].order_move(cells[i] if i < cells.size() else center)
 
 
 func _on_squad_destroyed(squad: Squad) -> void:
