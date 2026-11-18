@@ -87,7 +87,40 @@ func get_terrain(cell: Vector2i) -> int:
 
 
 func is_walkable(cell: Vector2i) -> bool:
-	return is_inside(cell) and not (get_terrain(cell) in BLOCKING_TERRAIN)
+	return is_inside(cell) and not (get_terrain(cell) in BLOCKING_TERRAIN) and not _objects.has(cell)
+
+
+# --- Objets fixes (bâtiments, gisements) : une case, infranchissable ----------
+
+var _objects: Dictionary = {}
+
+
+func add_object(cell: Vector2i, obj: Object) -> void:
+	_objects[cell] = obj
+	astar.set_point_solid(cell, true)
+
+
+func remove_object(cell: Vector2i, obj: Object) -> void:
+	if _objects.get(cell) == obj:
+		_objects.erase(cell)
+		astar.set_point_solid(cell, get_terrain(cell) in BLOCKING_TERRAIN)
+
+
+func object_at(cell: Vector2i) -> Object:
+	var o = _objects.get(cell)
+	if o != null and not is_instance_valid(o):
+		_objects.erase(cell)
+		return null
+	return o
+
+
+## Royaume auquel appartient la case : 0, 1, ou -1 (jungle).
+func kingdom_of(cell: Vector2i) -> int:
+	if cell.x < GameConfig.KINGDOM_DEPTH:
+		return 0
+	if cell.x >= width - GameConfig.KINGDOM_DEPTH:
+		return 1
+	return -1
 
 
 func cell_to_world(cell: Vector2i) -> Vector2:

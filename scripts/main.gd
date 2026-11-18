@@ -1,5 +1,5 @@
 extends Node2D
-## Point d'entrée du Prototype 1 : assemble carte, escouades, contrôles et HUD.
+## Point d'entrée : assemble carte, économie, gisements, escouades, contrôles et HUD.
 
 ## Composition de test [PROVISOIRE] : une escouade de chaque type par joueur.
 const TEST_ARMY: Array[StringName] = [&"warrior", &"warrior", &"archer", &"cavalier", &"mage", &"healer", &"miner"]
@@ -9,9 +9,21 @@ const TEST_ARMY: Array[StringName] = [&"warrior", &"warrior", &"archer", &"caval
 @onready var selection: SelectionController = $SelectionController
 @onready var camera: CameraController = $Camera
 @onready var hud: Hud = $HUD
+var economy: EconomySystem
 
 
 func _ready() -> void:
+	economy = EconomySystem.new()
+	economy.name = "Economy"
+	economy.map = map
+	add_child(economy)
+	economy.workers_requested.connect(_on_workers_requested)
+	DepositLayout.spawn_all(map, economy, map)
+	hud.economy_system = economy
+	hud.build_requested.connect(selection.start_build)
+	selection.economy_system = economy
+	selection.build_mode_changed.connect(hud.on_build_mode_changed)
+	selection.notify.connect(hud.show_notice)
 	selection.map = map
 	selection.selection_changed.connect(hud.on_selection_changed)
 	selection.controlled_team_changed.connect(hud.on_team_changed)
@@ -21,7 +33,6 @@ func _ready() -> void:
 	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
 	camera.set_zoom_level(2.0)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
-
 
 
 func _spawn_test_armies() -> void:
@@ -42,6 +53,17 @@ func spawn_squad(unit: UnitData, team: int, cell: Vector2i) -> Squad:
 	squads_root.add_child(squad)
 	squad.setup(unit, team, map, cell)
 	return squad
+
+
+## Une Cabane Ouvrier terminée fait apparaître ses ouvriers à côté d'elle.
+func _on_workers_requested(hut: Building, count: int) -> void:
+	var unit := UnitDatabase.get_unit(&"worker")
+	for i in count:
+		var cells := map.spread_cells(hut.cell, 1)
+		if cells.is_empty():
+			return
+		var w := spawn_squad(unit, hut.team, cells[0])
+		w.home = hut
 
 
 ## Commandes des boutons du HUD.

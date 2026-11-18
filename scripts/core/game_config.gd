@@ -32,6 +32,16 @@ const REPATH_INTERVAL: float = 0.5
 const TEAM_COLORS: Array = [Color(0.25, 0.55, 1.0), Color(1.0, 0.32, 0.25)]
 const TEAM_NAMES: Array = ["Joueur 1", "Joueur 2"]
 
+## --- Économie (valeurs données par l'auteur, voir docs/VALEURS.md) ---
+
+## Ressources de départ de chaque joueur.
+const STARTING_RESOURCES := {&"gold": 1000, &"food": 50, &"organic": 10, &"wood": 20, &"metal": 10}
+## Stockage de base, sans Bank / Moulin / Entrepôt.
+const BASE_STORAGE := {&"gold": 2000, &"wood": 50, &"metal": 25, &"organic": 25, &"food": 100}
+## Récolte d'un ouvrier sur un gisement, par tour (2 pour le métal ; appliqué
+## aux autres ressources en attendant leur valeur).
+const WORKER_HARVEST_PER_TURN: int = 2
+
 ## Musiques (assets/music/). Choix d'ambiance modifiable librement.
 const MUSIC_TITLE := "res://assets/music/campement.ogg"
 const MUSIC_BATTLE := "res://assets/music/chevaliers_de_pik.ogg"

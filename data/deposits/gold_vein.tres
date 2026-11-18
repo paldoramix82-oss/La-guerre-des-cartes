@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="DepositData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/deposit_data.gd" id="1_dep"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/coin.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_dep")
+id = &"gold_vein"
+display_name = "Gisement d'or"
+resource = &"gold"
+amount = 200
+sprite = ExtResource("2_sprite")
+design_notes = "Quantité 200 : [PROVISOIRE], limites à fixer par l'auteur."

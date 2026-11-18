@@ -57,6 +57,12 @@ enum Category {
 ## Déplacement en cases par tour.
 @export var move_speed: float = 0.0
 
+@export_group("Règles")
+## Le bâtiment peut être détruit (Caserne, Cabane Ouvrier, Mine : non).
+@export var destructible: bool = true
+## Proposé dans le menu de construction du joueur.
+@export var player_buildable: bool = false
+
 @export_group("Présentation")
 @export var sprite: Texture2D
 ## Valeurs inconnues ou à préciser.

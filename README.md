@@ -3,7 +3,9 @@
 RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros — Godot 4.
 
 - Conception : [`docs/GDD.md`](docs/GDD.md)
-- État actuel : **Prototype 1** (carte, déplacements, sélection, combats) — [`docs/PROTOTYPE_1.md`](docs/PROTOTYPE_1.md)
+- Prototype 1 (carte, déplacements, sélection, combats) — [`docs/PROTOTYPE_1.md`](docs/PROTOTYPE_1.md)
+- **Prototype 2** (ressources, ouvriers, constructions) — [`docs/PROTOTYPE_2.md`](docs/PROTOTYPE_2.md)
+- Valeurs de jeu — [`docs/VALEURS.md`](docs/VALEURS.md)
 
 ## Démarrage
 
@@ -19,6 +21,8 @@ Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
 | Déplacer | Escouade choisie, puis clic sur le terrain |
 | Attaquer | Escouade choisie, puis clic sur un ennemi |
 | Soigner (Soigneur) | Option + clic sur un allié |
+| Construire | Menu **Construire** (en bas à gauche), puis clic dans votre royaume |
+| Récolter / aider à construire | Ouvriers choisis, puis clic sur un gisement / un chantier |
 | Stop / tout désélectionner | Bouton **Stop** (Espace) / **Aucun** (Échap) |
 | Déplacer la vue | Glisser à deux doigts · flèches · ZQSD (AZERTY) / WASD |
 | Zoom | Pincer · boutons **+** / **−** · touches + / − |

@@ -7,12 +7,17 @@ extends Node2D
 ##   Clic sur le terrain             : déplacer la sélection à cet endroit
 ##   Clic sur un ennemi              : l'attaquer
 ##   Option (Alt) + clic sur un allié : le soigner (Soigneur)
+##   Ouvriers + clic sur un gisement / un chantier : récolter / construire
+##   Mode construction (menu Construire) : clic pour poser, Échap pour annuler
 ##   Clic droit / clic à deux doigts : ordre direct (déplacer / attaquer / soigner)
 ##   Cmd/Ctrl + A : tout sélectionner · Espace : stop · Échap : désélectionner
 ##   Tab : changer d'équipe contrôlée (test)
 
 signal selection_changed(selected: Array[Squad])
 signal controlled_team_changed(team: int)
+signal build_mode_changed(data: BuildingData)
+## Message à afficher au joueur (ex. construction impossible).
+signal notify(text: String)
 
 ## Distance (pixels écran) au-delà de laquelle un clic devient un glisser.
 const DRAG_THRESHOLD_SCREEN := 10.0
@@ -20,8 +25,13 @@ const MARKER_DURATION := 0.6
 const COLOR_MOVE := Color(0.45, 1.0, 0.45)
 const COLOR_ATTACK := Color(1.0, 0.35, 0.3)
 const COLOR_HEAL := Color(1.0, 0.95, 0.45)
+const COLOR_WORK := Color(1.0, 0.8, 0.3)
 
 var map: GameMap
+var economy_system: EconomySystem
+## Bâtiment en cours de placement (mode construction), ou null.
+var build_data: BuildingData = null
+var _hover_world := Vector2.ZERO
 var controlled_team := 0
 var selected: Array[Squad] = []
 
@@ -46,6 +56,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	var world_pos := Vector2.ZERO
 	if event is InputEventMouse:
 		world_pos = (make_input_local(event) as InputEventMouse).position
+		_hover_world = world_pos
+		if build_data and event is InputEventMouseMotion:
+			queue_redraw()
+	if build_data and _handle_build_input(event, world_pos):
+		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT:
@@ -78,7 +93,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE:
 				stop_selected()
 			KEY_ESCAPE:
-				set_selection([])
+				if build_data:
+					cancel_build()
+				else:
+					set_selection([])
 			KEY_A:
 				if event.meta_pressed or event.ctrl_pressed:
 					select_all()
@@ -98,8 +116,55 @@ func _on_click(world_pos: Vector2, shift: bool, alt: bool) -> void:
 		else:
 			set_selection([clicked])
 		return
-	# Terrain, ennemi, ou Option + clic sur un allié : ordre à la sélection.
+	# Terrain, ennemi, gisement, chantier, ou Option + clic sur un allié : ordre à la sélection.
 	issue_order_at(world_pos)
+
+
+# --- Mode construction ---------------------------------------------------------
+
+func start_build(data: BuildingData) -> void:
+	build_data = data
+	build_mode_changed.emit(data)
+	queue_redraw()
+
+
+func cancel_build() -> void:
+	build_data = null
+	build_mode_changed.emit(null)
+	queue_redraw()
+
+
+## Gère les clics en mode construction. Retourne true si l'événement est consommé.
+func _handle_build_input(event: InputEvent, world_pos: Vector2) -> bool:
+	if not (event is InputEventMouseButton and event.pressed):
+		return false
+	if event.button_index == MOUSE_BUTTON_RIGHT:
+		cancel_build()
+		return true
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return false
+	try_place_building(map.world_to_cell(world_pos), event.shift_pressed)
+	return true
+
+
+## Pose le bâtiment en mode construction sur `cell` ; les ouvriers sélectionnés
+## vont le construire. Maj : rester en mode construction.
+func try_place_building(cell: Vector2i, keep_mode: bool = false) -> Building:
+	var err := economy_system.placement_error(build_data, controlled_team, cell)
+	if err != "":
+		notify.emit(err)
+		return null
+	var b := economy_system.place_building(build_data, controlled_team, cell, map.get_parent())
+	_show_marker(b.position, COLOR_WORK)
+	if not b.is_complete:
+		var workers := selected.filter(func(s): return s.data.is_worker)
+		if workers.is_empty():
+			notify.emit("Chantier posé : envoyez des ouvriers le construire.")
+		for w in workers:
+			w.order_work(b)
+	if not keep_mode or not economy_system.economy(controlled_team).can_afford(build_data.cost):
+		cancel_build()
+	return b
 
 
 # --- Actions publiques (aussi utilisées par les boutons du HUD) ---------------
@@ -156,15 +221,21 @@ func issue_order_at(world_pos: Vector2) -> void:
 	if selected.is_empty():
 		return
 	var clicked := squad_at(world_pos)
+	var obj := map.object_at(map.world_to_cell(world_pos))
 	var movers: Array = []
 	var acted := false
 	for s in selected:
-		if clicked == null or not s.order_target(clicked):
-			movers.append(s)
-		else:
+		if clicked != null and s.order_target(clicked):
 			acted = true
+		elif clicked == null and obj != null and s.order_work(obj):
+			acted = true
+		else:
+			movers.append(s)
 	if acted:
-		_show_marker(world_pos, COLOR_ATTACK if clicked.team != controlled_team else COLOR_HEAL)
+		if clicked == null:
+			_show_marker(obj.position, COLOR_WORK)
+		else:
+			_show_marker(world_pos, COLOR_ATTACK if clicked.team != controlled_team else COLOR_HEAL)
 	if movers.is_empty():
 		return
 	if not acted:
@@ -217,8 +288,24 @@ func _draw() -> void:
 		var rect := Rect2(_drag_start, _drag_end - _drag_start).abs()
 		draw_rect(rect, Color(1, 1, 1, 0.12))
 		draw_rect(rect, Color(1, 1, 1, 0.8), false, 1.0)
+	if build_data:
+		_draw_build_ghost()
 	if _marker_time > 0.0:
 		# Repère de l'ordre : un cercle qui se resserre sur la case visée.
 		var k := _marker_time / MARKER_DURATION
 		var r := GameConfig.TILE_SIZE * (0.25 + 0.35 * k)
 		draw_arc(_marker_pos, r, 0, TAU, 24, Color(_marker_color, k), 2.0)
+
+
+func _draw_build_ghost() -> void:
+	var cell := map.world_to_cell(_hover_world)
+	var ok := economy_system.placement_error(build_data, controlled_team, cell) == ""
+	var center := map.cell_to_world(cell)
+	var half := GameConfig.TILE_SIZE * 0.5
+	var col := Color(0.4, 1, 0.4) if ok else Color(1, 0.35, 0.3)
+	draw_rect(Rect2(center - Vector2(half, half), Vector2(half, half) * 2), Color(col, 0.25))
+	draw_rect(Rect2(center - Vector2(half, half), Vector2(half, half) * 2), col, false, 2.0)
+	if build_data.sprite:
+		var tex := build_data.sprite
+		var size := tex.get_size() * (2.0 if tex.get_size().x <= 16 else 1.0)
+		draw_texture_rect(tex, Rect2(center + Vector2(-size.x * 0.5, half - size.y), size), false, Color(1, 1, 1, 0.6))

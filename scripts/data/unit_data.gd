@@ -53,6 +53,8 @@ enum AttackPattern {
 @export var move_speed: float = 1.0
 
 @export_group("Capacités")
+## Ouvrier : récolte les gisements et construit les bâtiments (GDD §3.3).
+@export var is_worker: bool = false
 ## L'unité peut miner (Mineur). Le minage sera branché au Prototype 2 (ressources).
 @export var can_mine: bool = false
 

@@ -1,6 +1,6 @@
 # Consignes pour Claude
 
-Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`.
+Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`, `docs/PROTOTYPE_2.md`. Valeurs : `docs/VALEURS.md`.
 
 ## Règles (GDD §15)
 
@@ -16,8 +16,9 @@ Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. Éta
 
 ## Pratique
 
-- Toute valeur non définie par le GDD va dans `scripts/core/game_config.gd` (ou le `.tres` concerné),
-  marquée `[PROVISOIRE]`, et est listée dans le document du prototype en cours avec la question ouverte.
+- L'auteur préfère donner lui-même les valeurs manquantes : les lui demander. Si une valeur reste
+  indispensable pour avancer, la mettre `scripts/core/game_config.gd` (ou le `.tres` concerné),
+  marquée `[PROVISOIRE]`, et la lister dans le document du prototype en cours avec la question ouverte.
 - Lancer les tests : `tests/run.sh <godot>` (code de sortie 0 = OK ; échoue aussi sur toute `SCRIPT ERROR`).
 - Ne jamais passer à une fonction typée un objet qui peut avoir été libéré (unité morte) :
   vérifier `is_instance_valid()` d'abord, sinon Godot lève « previously freed ».

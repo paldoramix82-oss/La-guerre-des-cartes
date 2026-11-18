@@ -49,17 +49,23 @@ Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavalier
 
 ## Décisions de l'auteur (Prototype 2)
 
-- Récolte **sur place** : un ouvrier posé sur un gisement produit en continu, sans transport.
-- Cabane Ouvrier : les 3 Nourri / tour sont une **consommation** (entretien des 2 ouvriers).
-- Les valeurs manquantes sont fournies par l'auteur (pas de valeurs provisoires inventées).
+- Départ : 1000 Gd, 50 Nourri, 10 O, 20 Bs, 10 Ml.
+- Stockage de base (sans Bank / Moulin / Entrepôt) : 2000 Gd, 50 Bs, 25 Ml, 25 O, 100 Nourri.
+- Récolte **sur place** : un ouvrier récolte 2 par tour (métal). Gisements épuisables.
+- Gisements : forêt (bois, et nourriture), filons de métal, gisements d'or ; nourriture aussi ailleurs.
+- Or : gisements d'or, mines, pillage, butins de boss et de monstres.
+- Mines : pas de PV, indestructibles ; se capturent (siège) et se reprennent ; produisent un peu d'or et de métal.
+- Cabane Ouvrier : pas de PV, construite d'un coup ; les 3 Nourri / tour sont une **consommation**.
+- Caserne : 4 tours de construction, pas de PV, indestructible.
+- « Cabane Garde » : nombre de cabanes de garde fournies autour du bâtiment pour le protéger.
+- Construction : il faut des ouvriers ; plus il y en a, plus c'est rapide.
+- Sans nourriture : bâtiments, ouvriers, gardes et unités s'arrêtent de fonctionner.
 
 ## Encore à définir
 
-- Ressources de départ de chaque joueur.
-- Capacité de stockage de base (sans Bank / Moulin / Entrepôt).
-- Vitesse de récolte d'un ouvrier, et gisements (types, quantités, emplacements).
-- Mine : PV et production.
-- Cabane Ouvrier et Caserne : PV et durée de construction.
-- Sens de la colonne « Cabane Garde » des bâtiments de ressource.
-- Conséquences d'un manque de nourriture (GDD §3.2).
+- Quantité de chaque gisement ; récolte par tour du bois, de la nourriture et de l'or.
+- Source de l'Organique.
+- PV et vitesse de l'ouvrier.
+- Mine : production exacte (or, métal).
+- Consommation de nourriture des unités militaires.
 - Barricade « 2 L ».

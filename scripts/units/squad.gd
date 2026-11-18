@@ -8,7 +8,11 @@ signal members_changed(squad: Squad)
 signal destroyed(squad: Squad)
 
 ## ACTING = attaque (ennemi) ou soin (allié) selon `data.action`.
-enum State { IDLE, MOVING, ACTING }
+## WORKING = ouvrier qui récolte un gisement ou construit un bâtiment.
+enum State { IDLE, MOVING, ACTING, WORKING }
+
+## Rayon (cases) dans lequel un ouvrier cherche un gisement du même type quand le sien est épuisé.
+const NEXT_DEPOSIT_RADIUS := 10
 
 const GROUP := &"squads"
 ## Fréquence de recherche automatique de cible quand l'escouade est inactive (s).
@@ -24,6 +28,12 @@ var target: Squad = null
 ## Cible acquise automatiquement : pas de poursuite hors de portée.
 var _auto_target := false
 var _acquire_timer := 0.0
+## Objet travaillé (gisement ou chantier).
+var work_target: MapObject = null
+## Type du dernier gisement récolté (pour enchaîner sur un gisement voisin).
+var _last_deposit_type: StringName = &""
+## Cabane d'origine des ouvriers : s'ils ne sont pas nourris, ils ne travaillent pas.
+var home: Building = null
 
 var selected := false:
 	set(value):
@@ -82,6 +92,11 @@ func is_wounded() -> bool:
 	return members.any(func(m): return m.is_wounded())
 
 
+## Faux si l'entretien (nourriture) de la cabane de l'ouvrier n'a pas été payé.
+func is_fed() -> bool:
+	return not is_instance_valid(home) or home.fed
+
+
 func is_burning() -> bool:
 	return members.any(func(m): return m.is_burning())
 
@@ -117,6 +132,7 @@ func order_move(cell: Vector2i) -> void:
 ## Déplace les individus sur les cases données (attribution au plus proche).
 func order_move_cells(dest_cells: Array) -> void:
 	target = null
+	work_target = null
 	_auto_target = false
 	var remaining := dest_cells.duplicate()
 	for m in members:
@@ -145,7 +161,23 @@ func order_target(other) -> bool:
 	return true
 
 
+## Ouvriers : récolter le gisement / construire le chantier `obj`.
+func order_work(obj) -> bool:
+	if not is_instance_valid(obj) or not (obj is MapObject) or not obj.can_be_worked_by(self):
+		return false
+	target = null
+	_auto_target = false
+	work_target = obj
+	if obj is Deposit:
+		_last_deposit_type = obj.data.id
+	for m in members:
+		m.target = null
+	state = State.WORKING
+	return true
+
+
 func order_stop() -> void:
+	work_target = null
 	target = null
 	_auto_target = false
 	for m in members:
@@ -179,6 +211,8 @@ func tick(delta: float) -> void:
 				state = State.IDLE
 		State.ACTING:
 			_process_action(delta)
+		State.WORKING:
+			_process_work(delta)
 
 
 func _process_action(delta: float) -> void:
@@ -194,6 +228,33 @@ func _process_action(delta: float) -> void:
 				any_in_range = true
 	if _auto_target and not any_in_range:
 		order_stop()
+
+
+func _process_work(delta: float) -> void:
+	if not is_instance_valid(work_target) or not work_target.can_be_worked_by(self):
+		var was_deposit := _last_deposit_type != &"" and not is_instance_valid(work_target)
+		order_stop()
+		if was_deposit:
+			_work_next_deposit()
+		return
+	var fed := is_fed()
+	for m in members.duplicate():
+		if is_instance_valid(m) and m.is_alive():
+			m.update_work(delta, work_target, fed)
+
+
+## Gisement épuisé : passe au gisement du même type le plus proche, s'il y en a un.
+func _work_next_deposit() -> void:
+	var best: Deposit = null
+	var best_d := NEXT_DEPOSIT_RADIUS + 1
+	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
+		if o is Deposit and o.is_alive() and o.data.id == _last_deposit_type:
+			var d := CombatSystem.grid_distance(get_cell(), o.cell)
+			if d < best_d:
+				best = o
+				best_d = d
+	if best:
+		order_work(best)
 
 
 ## Escouade inactive : agit sur l'escouade dont un individu valide est à portée

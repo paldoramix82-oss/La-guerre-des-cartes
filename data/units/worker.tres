@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/fermier.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"worker"
+display_name = "Ouvrier"
+short_label = "O"
+squad_size = 1
+hp = 30
+damage = 0
+attack_range = 1
+attack_pattern = 0
+zone_size = 1
+move_speed = 2.0
+color = Color(0.8, 0.7, 0.5, 1)
+sprite = ExtResource("2_sprite")
+is_worker = true
+design_notes = "Fourni par la Cabane Ouvrier (2 par cabane). PV 30 et déplacement 2 : [PROVISOIRE], non définis par l'auteur."

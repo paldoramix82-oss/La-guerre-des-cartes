@@ -183,6 +183,24 @@ func update_action(delta: float, target_squad, chase: bool) -> bool:
 	return false
 
 
+## Ouvrier : rejoint une case adjacente à `obj` puis y travaille (si nourri).
+func update_work(delta: float, obj: MapObject, fed: bool) -> void:
+	var adjacent := CombatSystem.grid_distance(get_cell(), obj.cell) == 1
+	if adjacent:
+		if is_moving() and map.is_free(get_cell(), self):
+			path.clear()
+			_reserve(get_cell())
+		if not is_moving() and fed:
+			obj.work(self, delta)
+		return
+	_repath_timer -= delta
+	if _repath_timer <= 0.0 or not is_moving():
+		_repath_timer = GameConfig.REPATH_INTERVAL
+		var dest := map.free_cell_in_range(obj.cell, 1, get_cell(), self)
+		if dest != NO_CELL and (dest != reserved_cell or not is_moving()):
+			move_to(dest)
+
+
 ## Cible valide à portée la plus proche dans `squad_ref` (ou la plus proche tout court si `allow_far`).
 func _pick_target(squad_ref, allow_far: bool) -> Individual:
 	if not is_instance_valid(squad_ref):

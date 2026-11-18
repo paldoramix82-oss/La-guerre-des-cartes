@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/weapon_rack.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_building")
@@ -18,4 +19,8 @@ recruit_per_turn = {
 &"healer": 1,
 &"mage": 1
 }
-design_notes = "PV et durée de construction non précisés. Cadence : individus recrutés par tour."
+design_notes = "Pas de PV, indestructible. Cadence : individus recrutés par tour (Prototype 3)."
+sprite = ExtResource("2_sprite")
+player_buildable = true
+destructible = false
+build_turns = 4

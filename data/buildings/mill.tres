@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/sacks.png" id="2_sprite"]
 
 [resource]
 script = ExtResource("1_building")
@@ -20,3 +21,5 @@ guard_huts = 2
 upkeep = {
 &"food": 4
 }
+sprite = ExtResource("2_sprite")
+player_buildable = true
