@@ -16,6 +16,8 @@ extends Node2D
 signal selection_changed(selected: Array[Squad])
 signal controlled_team_changed(team: int)
 signal build_mode_changed(data: BuildingData)
+## Bâtiment choisi (clic sur l'un de vos bâtiments), ou null.
+signal building_selected(building: Building)
 ## Message à afficher au joueur (ex. construction impossible).
 signal notify(text: String)
 
@@ -29,6 +31,7 @@ const COLOR_WORK := Color(1.0, 0.8, 0.3)
 
 var map: GameMap
 var economy_system: EconomySystem
+var selected_building: Building = null
 ## Ordre en attente d'un clic (boutons Déplacer / Attaquer du panneau de commandes).
 enum OrderMode { NONE, MOVE, ATTACK }
 var order_mode: OrderMode = OrderMode.NONE
@@ -119,6 +122,13 @@ func _on_click(world_pos: Vector2, shift: bool, alt: bool) -> void:
 		else:
 			set_selection([clicked])
 		return
+	# Clic sur l'un de vos bâtiments : le choisir (sauf ouvriers envoyés sur un chantier).
+	var obj := map.object_at(map.world_to_cell(world_pos))
+	if obj is Building and obj.team == controlled_team and not alt:
+		var helps_build: bool = not obj.is_complete and selected.any(func(s): return s.data.is_worker)
+		if not helps_build:
+			select_building(obj)
+			return
 	# Terrain, ennemi, gisement, chantier, ou Option + clic sur un allié : ordre à la sélection.
 	issue_order_at(world_pos)
 
@@ -211,7 +221,23 @@ func set_controlled_team(team: int) -> void:
 	controlled_team_changed.emit(team)
 
 
+func select_building(b: Building) -> void:
+	set_selection([])
+	selected_building = b
+	b.selected = true
+	building_selected.emit(b)
+
+
+func _clear_building() -> void:
+	if is_instance_valid(selected_building):
+		selected_building.selected = false
+	if selected_building != null:
+		selected_building = null
+		building_selected.emit(null)
+
+
 func set_selection(squads: Array) -> void:
+	_clear_building()
 	for s in selected:
 		if is_instance_valid(s):
 			s.selected = false

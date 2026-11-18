@@ -23,3 +23,6 @@ cost = {
 }
 
 design_notes = ""
+upkeep = {
+&"food": 1
+}

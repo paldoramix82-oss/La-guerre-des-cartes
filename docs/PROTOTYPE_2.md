@@ -78,7 +78,6 @@ le cristal bleu (probablement le mana) attend le Prototype 5.
 
 1. Quantité de chaque gisement (et différente selon le type ?).
 2. Récolte par tour pour le bois, la nourriture et l'or (2 comme le métal ?).
-3. Organique : vient de la Ferme et des monstres / animaux de la forêt (décision de l'auteur).
-   Quantité produite par la Ferme ? (monstres : Prototype 4)
+3. Organique : Ferme 2 / tour (fait) ; monstres / animaux de la forêt au Prototype 4.
 4. PV et vitesse de l'ouvrier.
-5. Consommation de nourriture de chaque unité (elle varie selon l'unité).
+5. Consommation de nourriture des unités : fait (voir Prototype 3).

@@ -24,3 +24,6 @@ cost = {
 burn_damage = 2
 burn_turns = 2
 design_notes = "Zone 2 (2 cases H ou V). 10 dégâts + brûlure de 2 dégâts par tour pendant 2 tours."
+upkeep = {
+&"food": 1
+}

@@ -47,6 +47,16 @@ enum AttackPattern {
 @export_group("Recrutement")
 ## Coût de création de l'escouade, ex. {&"food": 4, &"gold": 50} (voir ResourceTypes).
 @export var cost: Dictionary = {}
+## Consommation par tour de CHAQUE individu, ex. {&"food": 2}. Sans nourriture, l'escouade s'arrête.
+@export var upkeep: Dictionary = {}
+
+
+## Consommation par tour de `alive` individus.
+func upkeep_for(alive: int) -> Dictionary:
+	var out := {}
+	for r in upkeep:
+		out[r] = upkeep[r] * alive
+	return out
 
 @export_group("Déplacement")
 ## Déplacement en cases par tour (converti en secondes via GameConfig).

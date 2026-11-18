@@ -10,7 +10,8 @@ display_name = "Ferme"
 category = 1
 hp = 125
 production = {
-&"food": 25
+&"food": 25,
+&"organic": 2
 }
 cost = {
 &"gold": 50,

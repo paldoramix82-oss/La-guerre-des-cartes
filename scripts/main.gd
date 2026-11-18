@@ -18,9 +18,12 @@ func _ready() -> void:
 	economy.map = map
 	add_child(economy)
 	economy.workers_requested.connect(_on_workers_requested)
+	economy.squad_recruited.connect(_on_squad_recruited)
 	DepositLayout.spawn_all(map, economy, map)
 	hud.setup(map, camera, economy)
 	hud.build_requested.connect(selection.start_build)
+	hud.recruit_requested.connect(_on_recruit_requested)
+	selection.building_selected.connect(hud.on_building_selected)
 	selection.economy_system = economy
 	selection.build_mode_changed.connect(hud.on_build_mode_changed)
 	selection.notify.connect(hud.show_notice)
@@ -29,7 +32,8 @@ func _ready() -> void:
 	selection.controlled_team_changed.connect(hud.on_team_changed)
 	hud.command.connect(_on_hud_command)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
-	_spawn_test_armies()
+	if GameConfig.SPAWN_TEST_ARMIES:
+		_spawn_test_armies()
 	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
 	camera.set_zoom_level(2.6)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
@@ -64,6 +68,31 @@ func _on_workers_requested(hut: Building, count: int) -> void:
 			return
 		var w := spawn_squad(unit, hut.team, cells[0])
 		w.home = hut
+
+
+## Fin de recrutement : l'escouade apparaît à côté de sa Caserne.
+func _on_squad_recruited(barracks: Building, unit: UnitData) -> void:
+	var cells := map.spread_cells(barracks.cell, unit.squad_size)
+	if cells.size() < unit.squad_size:
+		return
+	var s := Squad.new()
+	squads_root.add_child(s)
+	s.setup(unit, barracks.team, map, cells[0], cells)
+	selection.notify.emit("%s recruté." % unit.display_name)
+
+
+## Bouton d'unité de l'onglet Recrutement : Caserne choisie, sinon la moins occupée.
+func _on_recruit_requested(unit: UnitData) -> void:
+	var team := selection.controlled_team
+	var chosen: Building = selection.selected_building
+	if not (is_instance_valid(chosen) and chosen.can_recruit(unit)):
+		chosen = null
+	var err := economy.recruit_error(unit, team, chosen)
+	if err != "":
+		selection.notify.emit(err)
+		return
+	var b := economy.recruit(unit, team, chosen)
+	selection.notify.emit("%s : recrutement lancé (%d en file)." % [unit.display_name, b.queue.size()])
 
 
 ## Commandes des boutons du HUD.

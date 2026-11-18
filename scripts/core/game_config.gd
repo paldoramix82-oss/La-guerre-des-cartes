@@ -42,6 +42,11 @@ const BASE_STORAGE := {&"gold": 2000, &"wood": 50, &"metal": 25, &"organic": 25,
 ## aux autres ressources en attendant leur valeur).
 const WORKER_HARVEST_PER_TURN: int = 2
 
+## Outil de test : faire apparaître une armée de chaque côté au lancement.
+## Désactivé : avec la consommation de nourriture, elle serait affamée en 2 tours ;
+## les unités se recrutent maintenant à la Caserne.
+const SPAWN_TEST_ARMIES := false
+
 ## Musiques (assets/music/). Choix d'ambiance modifiable librement.
 const MUSIC_TITLE := "res://assets/music/campement.ogg"
 const MUSIC_BATTLE := "res://assets/music/chevaliers_de_pik.ogg"

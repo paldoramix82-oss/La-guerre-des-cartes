@@ -52,6 +52,10 @@ func _run_all() -> void:
 	_test_storage_cap()
 	_test_production_and_upkeep()
 	_test_income_per_turn()
+	_test_unit_upkeep_values()
+	_test_unfed_squad_stops()
+	_test_recruitment()
+	_test_select_barracks_and_recruit_click()
 	_test_food_shortage_stops_workers()
 	_test_build_mode_and_work_clicks()
 	_test_dead_target_does_not_crash()
@@ -453,7 +457,7 @@ func _test_buildings_match_document() -> void:
 		&"mill": [100, {G: 50, B: 5}, 3, {F: 100}, {}, {F: 4}],
 		&"warehouse": [125, {G: 100, B: 7, M: 2}, 2, {B: 50, M: 25, O: 30}, {}, {F: 6}],
 		&"crop": [50, {G: 20, B: 4, O: 2}, 1, {}, {F: 10}, {}],
-		&"farm": [125, {G: 50, B: 8, O: 6}, 2, {}, {F: 25}, {F: 2}],
+		&"farm": [125, {G: 50, B: 8, O: 6}, 2, {}, {F: 25, O: 2}, {F: 2}],
 		&"mine": [0, {G: 75, B: 5, M: 3}, 2, {}, {}, {F: 3}],
 		&"archer_tower": [100, {B: 4, M: 2, G: 60}, 3, {}, {}, {F: 2}],
 		&"cannon": [150, {B: 2, M: 5, G: 100}, 4, {}, {}, {}],
@@ -694,4 +698,91 @@ func _test_income_per_turn() -> void:
 	econ.pay({&"gold": 100})
 	e.process_turn()
 	check(not econ.last_income.has(&"gold"), "les dépenses de construction ne comptent pas dans le revenu")
+	_clear_economy(e)
+
+
+# --- Nourriture des unités et recrutement (Prototype 3) -----------------------------
+
+func _test_unit_upkeep_values() -> void:
+	var expected := {&"warrior": 2, &"archer": 1, &"healer": 1, &"mage": 1, &"cavalier": 3, &"miner": 2, &"worker": 2}
+	for id in expected:
+		check(UnitDatabase.get_unit(id).upkeep == {&"food": expected[id]}, "%s : %d Nourri / tour par individu" % [id, expected[id]])
+	check(UnitDatabase.get_unit(&"warrior").upkeep_for(4) == {&"food": 8}, "escouade de 4 guerriers : 8 Nourri / tour")
+	var farm := BuildingDatabase.get_building(&"farm")
+	check(farm.production.get(&"organic", 0) == 2, "ferme : +2 Organique / tour")
+
+
+func _test_unfed_squad_stops() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	var w := spawn(&"warrior", 0, Vector2i(3, 20))
+	econ.amounts[&"food"] = 20
+	e.process_turn()
+	check(econ.get_amount(&"food") == 12 and w.is_fed(), "4 guerriers : -8 Nourri par tour")
+	econ.amounts[&"food"] = 5
+	e.process_turn()
+	check(not w.is_fed() and econ.get_amount(&"food") == 5, "nourriture insuffisante : l'escouade n'est pas nourrie")
+	var before := w.cells()
+	w.order_move(Vector2i(9, 20))
+	_run_world(e, [w], 0.5)
+	check(w.cells() == before, "escouade non nourrie : elle ne bouge plus")
+	econ.amounts[&"food"] = 50
+	_run_world(e, [w], GameConfig.SECONDS_PER_TURN + 0.1)
+	check(w.is_fed(), "nourriture revenue : l'escouade repart")
+	_clear_economy(e)
+
+
+func _barracks(e: EconomySystem, cell: Vector2i) -> Building:
+	var b := e.place_building(BuildingDatabase.get_building(&"barracks"), 0, cell)
+	b._complete()
+	return b
+
+
+func _test_recruitment() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	var warrior := UnitDatabase.get_unit(&"warrior")
+	check(e.recruit_error(warrior, 0) == "Construisez d'abord une Caserne.", "recrutement impossible sans Caserne")
+	var b := _barracks(e, Vector2i(4, 25))
+	var got := []
+	e.squad_recruited.connect(func(bb, u): got.append(u.id))
+	econ.amounts[&"food"] = 100
+	var gold_before := econ.get_amount(&"gold")
+	check(e.recruit(warrior, 0) == b, "guerriers ajoutés à la file de la Caserne")
+	check(econ.get_amount(&"gold") == gold_before - 50 and econ.get_amount(&"food") == 96, "coût payé : 50 Gd, 4 Nourri")
+	e.recruit(UnitDatabase.get_unit(&"archer"), 0)
+	check(b.queue.size() == 2, "file : 2 escouades")
+	check(is_equal_approx(b.recruit_time(warrior), GameConfig.SECONDS_PER_TURN), "4 guerriers à 4 / tour : 1 tour")
+	check(is_equal_approx(b.recruit_time(UnitDatabase.get_unit(&"miner")), GameConfig.SECONDS_PER_TURN * 0.5),
+			"1 mineur à 2 / tour : un demi-tour")
+	e.tick(GameConfig.SECONDS_PER_TURN * 0.6)
+	check(got.is_empty(), "une escouade à la fois : rien avant la fin du premier recrutement")
+	e.tick(GameConfig.SECONDS_PER_TURN * 0.45)
+	check(got == [&"warrior"], "guerriers recrutés après 1 tour")
+	e.tick(GameConfig.SECONDS_PER_TURN * 1.05)
+	check(got == [&"warrior", &"archer"], "puis les archers")
+	econ.amounts[&"gold"] = 10
+	check(e.recruit_error(warrior, 0) == "Ressources insuffisantes.", "recrutement : ressources insuffisantes")
+	_clear_economy(e)
+
+
+func _test_select_barracks_and_recruit_click() -> void:
+	var e := _new_economy()
+	var sel := SelectionController.new()
+	sel.map = map
+	sel.economy_system = e
+	root.add_child(sel)
+	var b := _barracks(e, Vector2i(6, 26))
+	var w := spawn(&"warrior", 0, Vector2i(3, 30))
+	sel.set_selection([w])
+	sel._on_click(b.position, false, false)
+	check(sel.selected_building == b and sel.selected.is_empty(), "clic sur sa Caserne : elle est choisie")
+	sel._on_click(w.members[0].position, false, false)
+	check(sel.selected_building == null and sel.selected == [w], "choisir une escouade libère le bâtiment")
+	var site := e.place_building(BuildingDatabase.get_building(&"mill"), 0, Vector2i(9, 26))
+	var worker := _spawn_worker(0, Vector2i(9, 28))
+	sel.set_selection([worker])
+	sel._on_click(site.position, false, false)
+	check(worker.work_target == site, "ouvriers + clic sur un chantier : construire (pas de sélection)")
+	sel.free()
 	_clear_economy(e)

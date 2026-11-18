@@ -34,6 +34,8 @@ var work_target: MapObject = null
 var _last_deposit_type: StringName = &""
 ## Cabane d'origine des ouvriers : s'ils ne sont pas nourris, ils ne travaillent pas.
 var home: Building = null
+## Consommation de nourriture payée ce tour-ci (voir EconomySystem).
+var fed := true
 
 var selected := false:
 	set(value):
@@ -92,9 +94,17 @@ func is_wounded() -> bool:
 	return members.any(func(m): return m.is_wounded())
 
 
-## Faux si l'entretien (nourriture) de la cabane de l'ouvrier n'a pas été payé.
+## Faux si la consommation de l'escouade (ou de la cabane de l'ouvrier) n'a pas été payée :
+## l'escouade s'arrête alors de fonctionner.
 func is_fed() -> bool:
-	return not is_instance_valid(home) or home.fed
+	return fed and (not is_instance_valid(home) or home.fed)
+
+
+func set_fed(value: bool) -> void:
+	if fed != value:
+		fed = value
+		for m in members:
+			m.queue_redraw()
 
 
 func is_burning() -> bool:
@@ -198,7 +208,7 @@ func tick(delta: float) -> void:
 	for m in members.duplicate():
 		if is_instance_valid(m) and m.is_alive():
 			m.tick(delta)
-	if not is_alive():
+	if not is_alive() or not is_fed():
 		return
 	match state:
 		State.IDLE:
@@ -237,10 +247,10 @@ func _process_work(delta: float) -> void:
 		if was_deposit:
 			_work_next_deposit()
 		return
-	var fed := is_fed()
+	var can_work := is_fed()
 	for m in members.duplicate():
 		if is_instance_valid(m) and m.is_alive():
-			m.update_work(delta, work_target, fed)
+			m.update_work(delta, work_target, can_work)
 
 
 ## Gisement épuisé : passe au gisement du même type le plus proche, s'il y en a un.

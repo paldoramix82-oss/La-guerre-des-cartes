@@ -5,6 +5,7 @@ RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros �
 - Conception : [`docs/GDD.md`](docs/GDD.md)
 - Prototype 1 (carte, déplacements, sélection, combats) — [`docs/PROTOTYPE_1.md`](docs/PROTOTYPE_1.md)
 - **Prototype 2** (ressources, ouvriers, constructions) — [`docs/PROTOTYPE_2.md`](docs/PROTOTYPE_2.md)
+- **Prototype 3** (recrutement, nourriture des unités) — [`docs/PROTOTYPE_3.md`](docs/PROTOTYPE_3.md)
 - Valeurs de jeu — [`docs/VALEURS.md`](docs/VALEURS.md)
 
 ## Démarrage
@@ -22,6 +23,7 @@ Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
 | Attaquer | Escouade choisie, puis clic sur un ennemi |
 | Soigner (Soigneur) | Option + clic sur un allié |
 | Construire | Onglet **Construction** (en bas), puis clic dans votre royaume |
+| Recruter | Clic sur votre Caserne, puis une unité de l'onglet **Recrutement** |
 | Récolter / aider à construire | Ouvriers choisis, puis clic sur un gisement / un chantier |
 | Déplacer / attaquer (en deux temps) | Bouton ✥ ou ⚔ du panneau de commandes, puis clic |
 | Stop / annuler | Main ✋ (Espace) / ⊘ (Échap) |

@@ -14,6 +14,12 @@ Durées en **tours** (1 tour = `GameConfig.SECONDS_PER_TURN`).
 | Mage | 25 | 10 + brûlure 2/T pendant 2 T | 2, zone 2 | 1 | 1 Nourri, 40 Gd | 1 |
 | Soigneur | 35 | soin 5 | 3, zone 2 | 2 | 1 Nourri, 30 Gd | 1 |
 | Mineur | 50 | 5 | 1 | 4 | 2 Nourri, 20 Gd | 1 |
+| Ouvrier | 30 * | 0 | — | 2 * | (Cabane Ouvrier) | 1 |
+
+\* provisoire.
+
+Consommation par individu et par tour : Guerrier 2, Archer 1, Soigneur 1, Mage 1, Cavalier 3,
+Mineur 2, Ouvrier 2 Nourri.
 
 ## Bâtiments
 
@@ -23,7 +29,7 @@ Durées en **tours** (1 tour = `GameConfig.SECONDS_PER_TURN`).
 | Ressource | Moulin | 100 | 100 Nourri | 0 | 50 Gd, 5 Bs | 3 | 2 | 4 Nourri |
 | Ressource | Entrepôt | 125 | 50 Bs, 25 Ml, 30 O | 0 | 100 Gd, 7 Bs, 2 Ml | 2 | 3 | 6 Nourri |
 | Production | Culture | 50 | — | 10 Nourri | 20 Gd, 4 Bs, 2 O | 1 | 0 | 0 |
-| Production | Ferme | 125 | — | 25 Nourri | 50 Gd, 8 Bs, 6 O | 2 | 0 | 2 Nourri |
+| Production | Ferme | 125 | — | 25 Nourri, 2 O | 50 Gd, 8 Bs, 6 O | 2 | 0 | 2 Nourri |
 | Production | Mine | ??? | — | ??? | 75 Gd, 5 Bs, 3 Ml | 2 | 0 | 3 Nourri |
 | Logement | Cabane Ouvrier | — | 2 ouvriers | — | 2 Bs | — | — | 3 Nourri |
 | Militaire | Caserne | — | — | — | 100 Gd | — | — | — |
@@ -61,13 +67,12 @@ Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavalier
 - Construction : il faut des ouvriers ; plus il y en a, plus c'est rapide.
 - Sans nourriture : bâtiments, ouvriers, gardes et unités s'arrêtent de fonctionner.
 - Organique : produit par la Ferme et obtenu sur les monstres / animaux de la forêt.
-- La consommation de nourriture varie d'une unité à l'autre.
+- La consommation de nourriture varie d'une unité à l'autre (valeurs dans le tableau des unités).
+- Ferme : 2 Organique par tour (« pour l'instant », équilibrage plus tard).
 
 ## Encore à définir
 
 - Quantité de chaque gisement ; récolte par tour du bois, de la nourriture et de l'or.
-- Organique produit par la Ferme (par tour).
 - PV et vitesse de l'ouvrier.
 - Mine : production exacte (or, métal).
-- Consommation de nourriture de chaque unité (par tour).
 - Barricade « 2 L ».

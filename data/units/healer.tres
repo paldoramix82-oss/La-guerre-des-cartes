@@ -24,3 +24,6 @@ cost = {
 action = 1
 heal_amount = 5
 design_notes = "Soigne 5 PV, Zone 2, portée 3. N'inflige pas de dégâts."
+upkeep = {
+&"food": 1
+}

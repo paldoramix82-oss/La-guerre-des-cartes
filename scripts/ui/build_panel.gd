@@ -7,6 +7,7 @@ extends TextureRect
 ## - Améliorations : pas encore définies.
 
 signal build_requested(data: BuildingData)
+signal recruit_requested(unit: UnitData)
 ## Survol d'une case : texte d'information (vide quand la souris sort).
 signal hovered(text: String)
 
@@ -102,12 +103,16 @@ func refresh() -> void:
 		if item is BuildingData:
 			_slots[i].disabled = not econ.can_afford(item.cost)
 		else:
-			_slots[i].disabled = true  # recrutement : Prototype 3
+			_slots[i].disabled = economy_system.recruit_error(item, team) != ""
 
 
 func _on_slot_pressed(idx: int) -> void:
-	if idx < _slot_items.size() and _slot_items[idx] is BuildingData:
+	if idx >= _slot_items.size():
+		return
+	if _slot_items[idx] is BuildingData:
 		build_requested.emit(_slot_items[idx])
+	else:
+		recruit_requested.emit(_slot_items[idx])
 
 
 func _describe(idx: int) -> String:
@@ -128,5 +133,12 @@ func _describe(idx: int) -> String:
 			lines.append("Fournit %d ouvriers" % d.workers)
 		return "\n".join(lines)
 	var u: UnitData = item
-	return "%s — %s\nEscouade de %d · %d PV · %d dégâts · portée %d\nRecrutement : Prototype 3" % [
-		u.display_name, ResourceTypes.format(u.cost), u.squad_size, u.hp, u.damage, u.attack_range]
+	var effect := "soin %d" % u.heal_amount if u.action == UnitData.ActionType.HEAL else "%d dégâts" % u.damage
+	var text := "%s — %s\nEscouade de %d · %d PV · %s · portée %d · déplacement %s\nConsommation : %s / tour" % [
+		u.display_name, ResourceTypes.format(u.cost), u.squad_size, u.hp, effect, u.attack_range,
+		str(u.move_speed), ResourceTypes.format(u.upkeep_for(u.squad_size))]
+	if economy_system:
+		var err := economy_system.recruit_error(u, team)
+		if err != "":
+			text += "\n" + err
+	return text

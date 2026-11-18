@@ -23,3 +23,6 @@ cost = {
 }
 
 design_notes = "Portée GDD : 'Cercle 1' -> toutes les cases adjacentes. Sprite provisoire (pas de cavalier dans le pack)."
+upkeep = {
+&"food": 3
+}

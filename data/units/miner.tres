@@ -23,3 +23,6 @@ cost = {
 }
 can_mine = true
 design_notes = "Combat et minage. Le minage arrive au Prototype 2 (production des mines à définir)."
+upkeep = {
+&"food": 2
+}

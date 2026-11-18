@@ -11,11 +11,13 @@ extends CanvasLayer
 ## &"center", &"move", &"attack", &"cancel".
 signal command(name: StringName)
 signal build_requested(data: BuildingData)
+signal recruit_requested(unit: UnitData)
 
 const NOTICE_DURATION := 3.0
 const HELP := "Clic sur une escouade : la choisir · Glisser : en choisir plusieurs\n" \
 	+ "Puis clic sur le terrain : y aller · Clic sur un ennemi : attaquer\n" \
 	+ "Ouvriers + clic sur un gisement / chantier : récolter / construire\n" \
+	+ "Clic sur votre Caserne puis onglet Recrutement : recruter\n" \
 	+ "Option + clic sur un allié : soigner · Tab : contrôler l'autre joueur (test)\n" \
 	+ "Vue : glisser à 2 doigts ou flèches · Zoom : pincer ou + / −"
 
@@ -47,6 +49,7 @@ var _info: Label
 var _notice: Label
 var _pause_menu: PauseMenu
 var _selection: Array[Squad] = []
+var _building: Building = null
 var _team := 0
 var _game_time := 0.0
 var _notice_time := 0.0
@@ -154,6 +157,7 @@ func _build_bottom() -> void:
 	UiUtil.anchor(_build_panel, Vector2(953, 683), Vector2(427, 230), 1, 1)
 	_build_panel.build_requested.connect(func(d): build_requested.emit(d))
 	_build_panel.hovered.connect(func(t): _hover_text = t)
+	_build_panel.recruit_requested.connect(func(u): recruit_requested.emit(u))
 
 	var cmds := CommandPanel.new()
 	_root.add_child(cmds)
@@ -226,8 +230,15 @@ func _refresh_selection() -> void:
 	else:
 		_portrait.texture = _selection[0].data.sprite
 		_portrait_name.text = _selection[0].data.display_name + ("" if _selection.size() == 1 else "  +%d" % (_selection.size() - 1))
+	if not is_instance_valid(_building):
+		_building = null
+	if _building and _selection.is_empty():
+		_portrait.texture = _building.data.sprite
+		_portrait_name.text = _building.data.display_name
 	if _hover_text != "":
 		_info.text = _hover_text
+	elif _building and _selection.is_empty():
+		_info.text = _building_info(_building)
 	elif _selection.is_empty():
 		_info.text = "%s\n\n%s" % [GameConfig.TEAM_NAMES[_team], HELP]
 	else:
@@ -240,11 +251,32 @@ func _refresh_selection() -> void:
 		_info.text = "\n".join(lines)
 
 
+static func _building_info(b: Building) -> String:
+	var lines := [b.data.display_name]
+	if not b.is_complete:
+		lines.append("En construction : %d %%" % int(100.0 * b.progress / maxf(b.work_needed(), 0.001)))
+	elif not b.fed:
+		lines.append("Sans nourriture : à l'arrêt")
+	if not b.data.production.is_empty():
+		lines.append("Production / tour : " + ResourceTypes.format(b.data.production))
+	if not b.data.upkeep.is_empty():
+		lines.append("Consommation / tour : " + ResourceTypes.format(b.data.upkeep))
+	if not b.data.recruit_per_turn.is_empty():
+		if b.queue.is_empty():
+			lines.append("Aucun recrutement — onglet Recrutement pour recruter.")
+		else:
+			var names := b.queue.map(func(u): return u.display_name)
+			lines.append("Recrutement : %s (%d %%)" % [names[0], int(b.recruit_ratio() * 100)])
+			if names.size() > 1:
+				lines.append("En file : " + ", ".join(names.slice(1)))
+	return "\n".join(lines)
+
+
 static func _status(s: Squad) -> String:
 	var status: String = ["Repos", "Déplacement", "Soin" if s.data.action == UnitData.ActionType.HEAL else "Combat",
 			"Construction" if s.work_target is Building else "Récolte"][s.state]
-	if s.state == Squad.State.WORKING and not s.is_fed():
-		status += " (sans nourriture)"
+	if not s.is_fed():
+		status = "À l'arrêt (sans nourriture)"
 	if s.is_burning():
 		status += " · Brûlure"
 	return status
@@ -254,6 +286,12 @@ static func _status(s: Squad) -> String:
 
 func on_selection_changed(selection: Array[Squad]) -> void:
 	_selection = selection.duplicate()
+
+
+func on_building_selected(b: Building) -> void:
+	_building = b
+	if b and not b.data.recruit_per_turn.is_empty():
+		_build_panel.set_tab(BuildPanel.Tab.RECRUITMENT)
 
 
 func on_team_changed(team: int) -> void:

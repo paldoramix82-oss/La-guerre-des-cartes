@@ -148,7 +148,8 @@ func tick(delta: float) -> void:
 		_flash -= delta
 		queue_redraw()
 	_process_burns(delta)
-	if is_alive():
+	# Sans nourriture, l'individu ne bouge plus (GDD §3.2, décision de l'auteur).
+	if is_alive() and squad.is_fed():
 		_follow_path(delta)
 		if not is_moving():
 			_snap_to_cell(delta)
@@ -290,6 +291,8 @@ func _draw() -> void:
 		tint = _flash_color * 1.6
 	elif is_burning():
 		tint = Color(1.0, 0.65, 0.45)
+	elif not squad.is_fed():
+		tint = Color(0.5, 0.5, 0.5)
 	if data.sprite:
 		var size := data.sprite.get_size()
 		# L'équipe 2 regarde vers la gauche.
