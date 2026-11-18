@@ -24,6 +24,8 @@ func _run_all() -> void:
 		map.generate_placeholder_layout()
 	_test_all_scripts_compile()
 	_test_unit_data_matches_gdd()
+	_test_unit_costs_match_document()
+	_test_buildings_match_document()
 	_test_one_individual_per_cell()
 	_test_squad_totals()
 	_test_individual_damage_and_removal()
@@ -136,7 +138,7 @@ func _test_unit_data_matches_gdd() -> void:
 		&"warrior": [4, 50, 10, 1, 1.0],
 		&"archer": [2, 30, 20, 3, 2.0],
 		&"cavalier": [2, 75, 15, 1, 4.0],
-		&"mage": [1, 25, 10, 1, 1.0],
+		&"mage": [1, 25, 10, 2, 1.0],
 		&"healer": [1, 35, 0, 3, 2.0],
 		&"miner": [1, 50, 5, 1, 4.0],
 	}
@@ -411,3 +413,59 @@ func _test_dead_target_does_not_crash() -> void:
 	_run_ticks([w], 1.0)
 	check(w.state == Squad.State.IDLE, "cible détruite : l'escouade s'arrête proprement")
 	_clear_squads()
+
+
+## Coûts de création des unités (document « Le RTS »).
+func _test_unit_costs_match_document() -> void:
+	var expected := {
+		&"warrior": {&"food": 4, &"gold": 50},
+		&"archer": {&"food": 2, &"gold": 30},
+		&"cavalier": {&"food": 5, &"gold": 100},
+		&"mage": {&"food": 1, &"gold": 40},
+		&"healer": {&"food": 1, &"gold": 30},
+		&"miner": {&"food": 2, &"gold": 20},
+	}
+	for id in expected:
+		check(UnitDatabase.get_unit(id).cost == expected[id], "coût de %s conforme au document" % id)
+
+
+## Bâtiments, défenses et siège (document « Le RTS ») : [PV, coût, tours, stockage, production, conso].
+func _test_buildings_match_document() -> void:
+	var G := ResourceTypes.GOLD
+	var B := ResourceTypes.WOOD
+	var M := ResourceTypes.METAL
+	var O := ResourceTypes.ORGANIC
+	var F := ResourceTypes.FOOD
+	var expected := {
+		&"bank": [250, {G: 200, B: 10, M: 5}, 4, {G: 2000}, {}, {F: 10}],
+		&"mill": [100, {G: 50, B: 5}, 3, {F: 100}, {}, {F: 4}],
+		&"warehouse": [125, {G: 100, B: 7, M: 2}, 2, {B: 50, M: 25, O: 30}, {}, {F: 6}],
+		&"crop": [50, {G: 20, B: 4, O: 2}, 1, {}, {F: 10}, {}],
+		&"farm": [125, {G: 50, B: 8, O: 6}, 2, {}, {F: 25}, {F: 2}],
+		&"mine": [0, {G: 75, B: 5, M: 3}, 2, {}, {}, {F: 3}],
+		&"archer_tower": [100, {B: 4, M: 2, G: 60}, 3, {}, {}, {F: 2}],
+		&"cannon": [150, {B: 2, M: 5, G: 100}, 4, {}, {}, {}],
+		&"guard_hut": [50, {B: 2, G: 20}, 1, {}, {}, {F: 2}],
+		&"barricade": [50, {B: 1, M: 1, G: 10}, 0, {}, {}, {}],
+		&"mortar": [125, {B: 6, M: 4, G: 125}, 4, {}, {}, {}],
+		&"ladder": [0, {B: 1, G: 5}, 0, {}, {}, {}],
+		&"siege_cannon": [75, {B: 2, M: 1, G: 120}, 2, {}, {}, {}],
+		&"worker_hut": [0, {B: 2}, 0, {}, {}, {F: 3}],
+		&"barracks": [0, {G: 100}, 0, {}, {}, {}],
+	}
+	check(BuildingDatabase.load_all().size() == expected.size(), "%d bâtiments chargés" % expected.size())
+	for id in expected:
+		var b := BuildingDatabase.get_building(id)
+		check(b != null, "bâtiment %s présent" % id)
+		if b == null:
+			continue
+		var e: Array = expected[id]
+		check([b.hp, b.cost, b.build_turns, b.storage, b.production, b.upkeep] == e,
+				"%s conforme au document" % id)
+	var dmg := {&"archer_tower": [20, 7, 0], &"cannon": [40, 4, 0], &"guard_hut": [10, 3, 0], &"mortar": [30, 6, 2], &"siege_cannon": [75, 1, 0]}
+	for id in dmg:
+		var b := BuildingDatabase.get_building(id)
+		check([b.damage, b.attack_range, b.min_range] == dmg[id], "%s : dégâts / portée conformes" % id)
+	check(BuildingDatabase.get_building(&"guard_hut").occupants == 2, "cabane garde : 2 gardes")
+	check(BuildingDatabase.get_building(&"worker_hut").workers == 2, "cabane ouvrier : 2 ouvriers")
+	check(BuildingDatabase.get_building(&"barracks").recruit_per_turn[&"warrior"] == 4, "caserne : 4 guerriers / tour")

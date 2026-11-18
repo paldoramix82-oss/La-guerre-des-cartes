@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"barracks"
+display_name = "Caserne"
+category = 4
+cost = {
+&"gold": 100
+}
+recruit_per_turn = {
+&"warrior": 4,
+&"archer": 2,
+&"cavalier": 2,
+&"miner": 2,
+&"healer": 1,
+&"mage": 1
+}
+design_notes = "PV et durée de construction non précisés. Cadence : individus recrutés par tour."

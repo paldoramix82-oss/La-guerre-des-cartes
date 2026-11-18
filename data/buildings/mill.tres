@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"mill"
+display_name = "Moulin"
+category = 0
+hp = 100
+storage = {
+&"food": 100
+}
+cost = {
+&"gold": 50,
+&"wood": 5
+}
+build_turns = 3
+guard_huts = 2
+upkeep = {
+&"food": 4
+}

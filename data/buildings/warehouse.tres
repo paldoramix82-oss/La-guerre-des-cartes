@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"warehouse"
+display_name = "Entrepôt"
+category = 0
+hp = 125
+storage = {
+&"wood": 50,
+&"metal": 25,
+&"organic": 30
+}
+cost = {
+&"gold": 100,
+&"wood": 7,
+&"metal": 2
+}
+build_turns = 2
+guard_huts = 3
+upkeep = {
+&"food": 6
+}

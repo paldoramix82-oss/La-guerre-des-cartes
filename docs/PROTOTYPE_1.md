@@ -55,7 +55,6 @@ Ces choix ne sont pas définis par le GDD (§13) ; ils sont centralisés pour ê
 | Poursuite | Chaque individu hors de portée rejoint la case libre à portée la plus proche de sa cible | `Individual._approach` |
 | Ciblage automatique | Une escouade inactive agit sur l'escouade dont un individu est à portée d'un des siens, sans poursuite | `Squad._auto_acquire` |
 | Direction de la zone du Mage | Axe dominant attaquant → cible, à partir de la case ciblée | `CombatSystem.affected_cells` |
-| Portée d'attaque du Mage | 1 (la colonne « Portée » indique seulement « Zone 2 ») | `data/units/mage.tres` |
 | Brûlure : nouvel impact | Une nouvelle brûlure du Mage sur un individu remplace la précédente (pas de cumul) ; 1er tick un tour après l'impact | `Individual.apply_burn` |
 | Soin : zone | Même géométrie « Zone 2 » que le Mage, appliquée aux alliés ; plafonné aux PV max ; pas de résurrection | `CombatSystem.perform_action` |
 | Cadence du soin | Comme l'attaque : 1 par tour | `GameConfig.ATTACK_INTERVAL_TURNS` |
@@ -67,6 +66,7 @@ Ces choix ne sont pas définis par le GDD (§13) ; ils sont centralisés pour ê
 - Mage « +2/T » : brûlure de 2 dégâts par tour pendant 2 tours.
 - Soigneur : la valeur 5 est un soin.
 - Mineur : combat et minage.
+- Portée du Mage : 2 (document « Le RTS »).
 - Placement : un individu par case.
 - Plusieurs individus sur une même case : non (une case = un individu).
 
@@ -76,7 +76,6 @@ Ces choix ne sont pas définis par le GDD (§13) ; ils sont centralisés pour ê
 2. **Ciblage** : chaque individu vise l'individu ennemi le plus proche. Correct ?
 3. **Cases occupées en mouvement** : un individu peut-il traverser une case occupée (actuellement oui) ?
 4. **Brûlure** : plusieurs Mages / plusieurs impacts doivent-ils cumuler leurs brûlures ?
-5. **Portée d'attaque du Mage** : toujours non précisée (1 case actuellement).
 
 ## Assets
 

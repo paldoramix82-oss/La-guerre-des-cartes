@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"guard_hut"
+display_name = "Cabane Garde"
+category = 2
+hp = 50
+occupants = 2
+damage = 10
+attack_range = 3
+upkeep = {
+&"food": 2
+}
+cost = {
+&"wood": 2,
+&"gold": 20
+}
+build_turns = 1
+design_notes = "2 gardes de 50 PV et 10 dégâts."

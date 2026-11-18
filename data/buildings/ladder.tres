@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"ladder"
+display_name = "Échelle"
+category = 3
+attack_range = 1
+unit_capacity = 1
+cost = {
+&"wood": 1,
+&"gold": 5
+}
+build_turns = 0

@@ -44,6 +44,10 @@ enum AttackPattern {
 ## Taille de la zone (rayon pour CIRCLE, longueur pour LINE).
 @export var zone_size: int = 1
 
+@export_group("Recrutement")
+## Coût de création de l'escouade, ex. {&"food": 4, &"gold": 50} (voir ResourceTypes).
+@export var cost: Dictionary = {}
+
 @export_group("Déplacement")
 ## Déplacement en cases par tour (converti en secondes via GameConfig).
 @export var move_speed: float = 1.0

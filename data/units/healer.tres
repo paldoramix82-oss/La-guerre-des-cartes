@@ -17,6 +17,10 @@ zone_size = 2
 move_speed = 2.0
 color = Color(1, 0.9, 0.45, 1)
 sprite = ExtResource("2_sprite")
+cost = {
+&"food": 1,
+&"gold": 30
+}
 action = 1
 heal_amount = 5
 design_notes = "Soigne 5 PV, Zone 2, portée 3. N'inflige pas de dégâts."

@@ -17,5 +17,9 @@ zone_size = 1
 move_speed = 4.0
 color = Color(0.6, 0.6, 0.7, 1)
 sprite = ExtResource("2_sprite")
+cost = {
+&"food": 2,
+&"gold": 20
+}
 can_mine = true
 design_notes = "Combat et minage. Le minage arrive au Prototype 2 (production des mines à définir)."

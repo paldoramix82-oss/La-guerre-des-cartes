@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"archer_tower"
+display_name = "Tour Archer"
+category = 2
+hp = 100
+damage = 20
+attack_range = 7
+upkeep = {
+&"food": 2
+}
+cost = {
+&"wood": 4,
+&"metal": 2,
+&"gold": 60
+}
+build_turns = 3
