@@ -17,16 +17,18 @@ Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
 | Action | Contrôle |
 |---|---|
 | Choisir une escouade | Clic dessus (Maj + clic : ajouter / retirer) |
-| Choisir plusieurs escouades | Glisser un rectangle · bouton **Tout choisir** (Cmd + A) |
+| Choisir plusieurs escouades | Glisser un rectangle · bouton ⬚ (Cmd + A) |
 | Déplacer | Escouade choisie, puis clic sur le terrain |
 | Attaquer | Escouade choisie, puis clic sur un ennemi |
 | Soigner (Soigneur) | Option + clic sur un allié |
-| Construire | Menu **Construire** (en bas à gauche), puis clic dans votre royaume |
+| Construire | Onglet **Construction** (en bas), puis clic dans votre royaume |
 | Récolter / aider à construire | Ouvriers choisis, puis clic sur un gisement / un chantier |
-| Stop / tout désélectionner | Bouton **Stop** (Espace) / **Aucun** (Échap) |
+| Déplacer / attaquer (en deux temps) | Bouton ✥ ou ⚔ du panneau de commandes, puis clic |
+| Stop / annuler | Main ✋ (Espace) / ⊘ (Échap) |
+| Pause / accélérer | Boutons en haut à droite (touche P) |
 | Déplacer la vue | Glisser à deux doigts · flèches · ZQSD (AZERTY) / WASD |
-| Zoom | Pincer · boutons **+** / **−** · touches + / − |
-| Contrôler l'autre joueur (test) | Bouton **Équipe** (Tab) |
+| Zoom / vue | Pincer · **+** / **−** près de la mini-carte · clic sur la mini-carte |
+| Contrôler l'autre joueur (test) | Touche Tab |
 
 Le clic droit (ou clic à deux doigts) reste disponible comme ordre direct.
 

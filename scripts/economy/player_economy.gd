@@ -10,6 +10,9 @@ var team: int
 var amounts: Dictionary = {}
 ## Capacité ajoutée par les bâtiments de stockage terminés.
 var extra_storage: Dictionary = {}
+## Revenu net du dernier tour (récolte + production - entretien), hors dépenses.
+var last_income: Dictionary = {}
+var _income: Dictionary = {}
 
 
 func _init(p_team: int = 0, start: Dictionary = GameConfig.STARTING_RESOURCES) -> void:
@@ -48,8 +51,24 @@ func add(r: StringName, amount: int) -> int:
 	var stored := clampi(capacity(r) - get_amount(r), 0, amount)
 	if stored > 0:
 		amounts[r] += stored
+		_income[r] = _income.get(r, 0) + stored
 		changed.emit()
 	return stored
+
+
+## Paie un entretien (compté dans le revenu net du tour). Retourne true si payé.
+func pay_upkeep(cost: Dictionary) -> bool:
+	if not pay(cost):
+		return false
+	for r in cost:
+		_income[r] = _income.get(r, 0) - cost[r]
+	return true
+
+
+## Fin de tour : le revenu accumulé devient `last_income`.
+func end_turn() -> void:
+	last_income = _income
+	_income = {}
 
 
 func add_all(res: Dictionary) -> void:

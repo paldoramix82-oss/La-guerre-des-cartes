@@ -11,7 +11,7 @@ extends Camera2D
 @export var scroll_speed := 22.0
 @export var zoom_step := 1.2
 @export var min_zoom := 1.0
-@export var max_zoom := 4.0
+@export var max_zoom := 5.0
 
 var bounds := Rect2()
 var _middle_drag := false

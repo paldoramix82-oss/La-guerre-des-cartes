@@ -49,10 +49,12 @@ func process_turn() -> void:
 		if not b.is_complete:
 			continue
 		var econ := economies[b.team]
-		var fed := b.data.upkeep.is_empty() or econ.pay(b.data.upkeep)
+		var fed := b.data.upkeep.is_empty() or econ.pay_upkeep(b.data.upkeep)
 		b.set_fed(fed)
 		if fed and not b.data.production.is_empty():
 			econ.add_all(b.data.production)
+	for econ in economies:
+		econ.end_turn()
 	turn_processed.emit()
 
 

@@ -28,6 +28,27 @@ Valeurs : `docs/VALEURS.md` (document de l'auteur « Le RTS » + réponses de l'
   pas de production, et les ouvriers de sa cabane s'arrêtent (bâtiment grisé avec « ! »).
 - On ne construit que dans son royaume, sur une case libre ; un bâtiment occupe une case et bloque le passage.
 
+## Interface (maquette de l'auteur)
+
+La maquette `assets/ui/mockup/interface_mockup.png` est découpée par `tools/extract_ui.py`
+en éléments transparents (`assets/ui/hud/`) ; la résolution de base du jeu est celle de la
+maquette (1672 × 941) et chaque élément est placé à ses coordonnées.
+
+| Zone | Contenu | Script |
+|---|---|---|
+| Barre du haut | Or, Bois, Nourriture, Métal, Organique : quantité et revenu net du dernier tour ; nombre d'individus | `hud.gd` |
+| Haut droite | Horloge de partie, Pause (menu), Accélérer (x2), Menu | `hud.gd` |
+| Mini-carte | Terrain, gisements, bâtiments, unités, vue ; clic = déplacer la vue ; + / − / centrer | `minimap.gd` |
+| Objectifs | Détruire le château ennemi, Vaincre le roi ennemi (Prototype 7) | `hud.gd` |
+| Main de cartes | 3 emplacements vides (Prototype 5) | `hud.gd` |
+| Portrait / Informations | Escouade choisie ; détails, ou aide ; description au survol d'une case | `hud.gd` |
+| Onglets | Construction (bâtiments), Recrutement (unités et coûts, Prototype 3), Améliorations (à définir) | `build_panel.gd` |
+| Commandes | Déplacer, Stop, Attaquer, Annuler, Tout choisir ; autres boutons « à définir » (grisés) | `command_panel.gd` |
+| Menu pause | Reprendre, Quitter la partie, Retour au menu ; Paramètres et Statistiques à venir | `pause_menu.gd` |
+
+Hors maquette (non définis) : la population « 48 / 70 » est remplacée par le nombre d'individus ;
+le cristal bleu (probablement le mana) attend le Prototype 5.
+
 ## Commandes
 
 - Menu **Construire** (en bas à gauche) → clic dans votre royaume pour poser (aperçu vert / rouge).
@@ -57,6 +78,7 @@ Valeurs : `docs/VALEURS.md` (document de l'auteur « Le RTS » + réponses de l'
 
 1. Quantité de chaque gisement (et différente selon le type ?).
 2. Récolte par tour pour le bois, la nourriture et l'or (2 comme le métal ?).
-3. D'où vient l'Organique ? (aucun gisement pour l'instant : seul le stock de départ)
+3. Organique : vient de la Ferme et des monstres / animaux de la forêt (décision de l'auteur).
+   Quantité produite par la Ferme ? (monstres : Prototype 4)
 4. PV et vitesse de l'ouvrier.
-5. Consommation de nourriture des unités militaires.
+5. Consommation de nourriture de chaque unité (elle varie selon l'unité).

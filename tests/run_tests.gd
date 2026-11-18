@@ -51,6 +51,7 @@ func _run_all() -> void:
 	_test_harvest_and_depletion()
 	_test_storage_cap()
 	_test_production_and_upkeep()
+	_test_income_per_turn()
 	_test_food_shortage_stops_workers()
 	_test_build_mode_and_work_clicks()
 	_test_dead_target_does_not_crash()
@@ -678,4 +679,19 @@ func _test_build_mode_and_work_clicks() -> void:
 	sel.start_build(BuildingDatabase.get_building(&"mill"))
 	check(sel.try_place_building(Vector2i(40, 18)) == null, "pose refusée hors du royaume")
 	sel.free()
+	_clear_economy(e)
+
+
+## Revenu net du tour (affiché « (+x) » dans la barre de ressources).
+func _test_income_per_turn() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	e.place_building(BuildingDatabase.get_building(&"crop"), 0, Vector2i(3, 5))._complete()
+	e.place_building(BuildingDatabase.get_building(&"worker_hut"), 0, Vector2i(3, 7))
+	econ.amounts[&"food"] = 20
+	e.process_turn()
+	check(econ.last_income.get(&"food", 0) == 10 - 3, "revenu du tour : +10 culture - 3 cabane = +7")
+	econ.pay({&"gold": 100})
+	e.process_turn()
+	check(not econ.last_income.has(&"gold"), "les dépenses de construction ne comptent pas dans le revenu")
 	_clear_economy(e)

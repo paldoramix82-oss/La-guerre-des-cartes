@@ -1,5 +1,5 @@
 extends Control
-## Écran titre : fond, titre, boutons Jouer / Quitter, musique.
+## Écran titre : fond, logo, boutons Jouer / Quitter, musique.
 
 const GAME_SCENE := "res://scenes/main.tscn"
 
@@ -21,18 +21,16 @@ func _ready() -> void:
 	vb.add_theme_constant_override("separation", 18)
 	center.add_child(vb)
 
-	# Titre écrit (le logo du pack porte le nom d'un autre jeu).
-	var title := Label.new()
-	title.text = "La Guerre des Cartes"
-	title.theme_type_variation = &"TitleLabel"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 84)
-	title.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.25))
-	title.add_theme_constant_override("outline_size", 14)
-	vb.add_child(title)
+	# Logo de la maquette de l'auteur (assets/ui/hud/logo.png).
+	var logo := TextureRect.new()
+	logo.texture = UiUtil.tex("logo")
+	logo.custom_minimum_size = logo.texture.get_size() * 1.3
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vb.add_child(logo)
 
 	var subtitle := Label.new()
-	subtitle.text = "Prototype 1 — Carte, déplacements, sélection, combats"
+	subtitle.text = "Prototype 2 — Ressources, ouvriers et constructions"
 	subtitle.theme_type_variation = &"TitleLabel"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(subtitle)

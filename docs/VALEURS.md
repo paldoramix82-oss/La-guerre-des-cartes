@@ -60,12 +60,14 @@ Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavalier
 - « Cabane Garde » : nombre de cabanes de garde fournies autour du bâtiment pour le protéger.
 - Construction : il faut des ouvriers ; plus il y en a, plus c'est rapide.
 - Sans nourriture : bâtiments, ouvriers, gardes et unités s'arrêtent de fonctionner.
+- Organique : produit par la Ferme et obtenu sur les monstres / animaux de la forêt.
+- La consommation de nourriture varie d'une unité à l'autre.
 
 ## Encore à définir
 
 - Quantité de chaque gisement ; récolte par tour du bois, de la nourriture et de l'or.
-- Source de l'Organique.
+- Organique produit par la Ferme (par tour).
 - PV et vitesse de l'ouvrier.
 - Mine : production exacte (or, métal).
-- Consommation de nourriture des unités militaires.
+- Consommation de nourriture de chaque unité (par tour).
 - Barricade « 2 L ».

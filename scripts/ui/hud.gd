@@ -1,211 +1,263 @@
 class_name Hud
 extends CanvasLayer
-## Interface du prototype : équipe contrôlée, aide (en haut à gauche) et
-## escouades sélectionnées avec portrait (en bas).
+## Interface de jeu, disposée comme la maquette de l'auteur
+## (assets/ui/mockup/interface_mockup.png, résolution de base 1672 x 941) :
+##   haut    : barre de ressources · horloge, pause, accélérer, menu
+##   droite  : mini-carte (+ zoom, recentrer) · objectifs · main de cartes
+##   bas     : portrait · informations · Construction / Recrutement / Améliorations · commandes
+## Les sous-panneaux ont leur propre script (Minimap, BuildPanel, CommandPanel, PauseMenu).
 
-## Émis par les boutons : &"select_all", &"stop", &"deselect", &"zoom_in", &"zoom_out", &"switch_team".
+## Commandes : &"select_all", &"stop", &"deselect", &"zoom_in", &"zoom_out", &"switch_team",
+## &"center", &"move", &"attack", &"cancel".
 signal command(name: StringName)
-## Bouton du menu Construire.
 signal build_requested(data: BuildingData)
 
-## Icônes des ressources (assets/sprites/items/).
-const RESOURCE_ICONS := {
-	&"gold": "res://assets/sprites/items/coin.png",
-	&"wood": "res://assets/sprites/nature/log.png",
-	&"metal": "res://assets/sprites/items/ore.png",
-	&"organic": "res://assets/sprites/items/herb.png",
-	&"food": "res://assets/sprites/items/food.png",
-}
 const NOTICE_DURATION := 3.0
-
 const HELP := "Clic sur une escouade : la choisir · Glisser : en choisir plusieurs\n" \
 	+ "Puis clic sur le terrain : y aller · Clic sur un ennemi : attaquer\n" \
 	+ "Ouvriers + clic sur un gisement / chantier : récolter / construire\n" \
-	+ "Option + clic sur un allié : soigner (Soigneur)\n" \
+	+ "Option + clic sur un allié : soigner · Tab : contrôler l'autre joueur (test)\n" \
 	+ "Vue : glisser à 2 doigts ou flèches · Zoom : pincer ou + / −"
 
-const BUTTONS := [
-	[&"select_all", "Tout choisir", "Cmd + A"],
-	[&"deselect", "Aucun", "Échap"],
-	[&"stop", "Stop", "Espace"],
-	[&"zoom_out", "−", "Touche -"],
-	[&"zoom_in", "+", "Touche +"],
-	[&"switch_team", "Équipe", "Tab : contrôler l'autre joueur (test)"],
+## Ressources de la barre : [ressource, icône (maquette ou pack)].
+const BAR_RESOURCES := [
+	[&"gold", "hud:icon_gold"],
+	[&"wood", "hud:icon_wood"],
+	[&"food", "hud:icon_food"],
+	[&"metal", "res://assets/sprites/items/ore.png"],
+	[&"organic", "res://assets/sprites/items/herb.png"],
 ]
+const BAR_SLOT_X := [30, 154, 278, 402, 526]
 
-var _team_label: Label
-var _selection_box: HBoxContainer
-var _selection_panel: PanelContainer
+var economy_system: EconomySystem
+var map: GameMap
+var camera: Camera2D
+
+var _root: Control
+var _amount_labels: Dictionary = {}
+var _rate_labels: Dictionary = {}
+var _units_label: Label
+var _clock_label: Label
+var _fast_button: TextureButton
+var _minimap: Minimap
+var _build_panel: BuildPanel
+var _portrait: TextureRect
+var _portrait_name: Label
+var _info: Label
+var _notice: Label
+var _pause_menu: PauseMenu
 var _selection: Array[Squad] = []
 var _team := 0
-var _dirty := true
-var economy_system: EconomySystem
-var _resource_labels: Dictionary = {}
-var _build_buttons: Array = []
-var _notice: Label
+var _game_time := 0.0
 var _notice_time := 0.0
-var _build_hint: Label
+var _hover_text := ""
 
 
 func _ready() -> void:
-	# Panneau d'aide.
-	var help_panel := PanelContainer.new()
-	help_panel.position = Vector2(12, 62)
-	var help_vbox := VBoxContainer.new()
-	_team_label = Label.new()
-	_team_label.theme_type_variation = &"TitleLabel"
-	help_vbox.add_child(_team_label)
-	var help := Label.new()
-	help.text = HELP
-	help.add_theme_font_size_override("font_size", 14)
-	help_vbox.add_child(help)
-	help_panel.add_child(help_vbox)
-	add_child(help_panel)
-
-	# Barre de boutons (en haut à droite) : toutes les commandes sans clavier.
-	var bar := HBoxContainer.new()
-	bar.add_theme_constant_override("separation", 6)
-	bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	bar.offset_right = -12
-	bar.offset_top = 12
-	for def in BUTTONS:
-		var b := Button.new()
-		b.text = def[1]
-		b.tooltip_text = def[2]
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 16)
-		b.custom_minimum_size = Vector2(44, 40)
-		var cmd: StringName = def[0]
-		b.pressed.connect(func(): command.emit(cmd))
-		bar.add_child(b)
-	add_child(bar)
-
-	# Barre de sélection en bas de l'écran.
-	_selection_panel = PanelContainer.new()
-	_selection_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_selection_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_selection_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_selection_panel.offset_bottom = -12
-	_selection_box = HBoxContainer.new()
-	_selection_box.add_theme_constant_override("separation", 8)
-	_selection_panel.add_child(_selection_box)
-	add_child(_selection_panel)
-	_build_resource_bar()
-	_build_menu()
-	_notice = Label.new()
-	_notice.theme_type_variation = &"TitleLabel"
-	_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_notice.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_notice.offset_top = 70
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_root = Control.new()
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Les éléments de la maquette sont lissés ; les sprites pixel art restent nets.
+	_root.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	add_child(_root)
+	_build_top_bar()
+	_build_top_right()
+	_build_bottom()
+	_notice = UiUtil.label(_root, "", Vector2.ZERO, 22, UiUtil.COLOR_GOLD)
 	_notice.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 	_notice.add_theme_constant_override("outline_size", 6)
-	add_child(_notice)
-	_refresh()
+	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiUtil.anchor(_notice, Vector2(436, 84), Vector2(840, 30), 0.5, 0)
+	_pause_menu = PauseMenu.new()
+	_root.add_child(_pause_menu)
 
 
-# --- Ressources -----------------------------------------------------------------
+## Références au monde (appelé par la scène principale).
+func setup(p_map: GameMap, p_camera: Camera2D, p_economy: EconomySystem) -> void:
+	map = p_map
+	camera = p_camera
+	economy_system = p_economy
+	_minimap.map = map
+	_minimap.camera = camera
+	_build_panel.economy_system = economy_system
 
-func _build_resource_bar() -> void:
-	var panel := PanelContainer.new()
-	panel.position = Vector2(12, 8)
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 10)
-	for r in ResourceTypes.ALL:
-		var icon := TextureRect.new()
-		icon.texture = load(RESOURCE_ICONS[r])
-		icon.custom_minimum_size = Vector2(24, 24)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.tooltip_text = ResourceTypes.NAMES[r]
-		hb.add_child(icon)
-		var l := Label.new()
-		l.add_theme_font_size_override("font_size", 15)
-		l.tooltip_text = ResourceTypes.NAMES[r]
-		l.mouse_filter = Control.MOUSE_FILTER_PASS
-		hb.add_child(l)
-		_resource_labels[r] = l
-	panel.add_child(hb)
-	add_child(panel)
+
+# --- Construction de l'interface ---------------------------------------------------
+
+func _build_top_bar() -> void:
+	var bar := UiUtil.panel(_root, "resource_bar", Vector2(431, 13), 0.5, 0)
+	bar.tooltip_text = "Ressources : quantité (revenu net du dernier tour)"
+	for i in BAR_RESOURCES.size():
+		var r: StringName = BAR_RESOURCES[i][0]
+		var icon_path: String = BAR_RESOURCES[i][1]
+		var x: float = BAR_SLOT_X[i]
+		var icon_tex: Texture2D = UiUtil.tex(icon_path.trim_prefix("hud:")) if icon_path.begins_with("hud:") else load(icon_path)
+		UiUtil.pixel_icon(bar, icon_tex, Rect2(x, 14, 34, 34)).texture_filter = \
+				CanvasItem.TEXTURE_FILTER_LINEAR if icon_path.begins_with("hud:") else CanvasItem.TEXTURE_FILTER_NEAREST
+		_amount_labels[r] = UiUtil.label(bar, "0", Vector2(x + 38, 13), 22)
+		_rate_labels[r] = UiUtil.label(bar, "", Vector2(x + 38, 35), 14, UiUtil.COLOR_GAIN)
+	UiUtil.pixel_icon(bar, UiUtil.tex("icon_population"), Rect2(690, 13, 44, 34)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_units_label = UiUtil.label(bar, "0", Vector2(742, 14), 22)
+
+
+func _build_top_right() -> void:
+	UiUtil.panel(_root, "clock", Vector2(1341, 17), 1, 0)
+	_clock_label = UiUtil.label(_root, "00:00", Vector2.ZERO, 24)
+	UiUtil.anchor(_clock_label, Vector2(1390, 25), Vector2(64, 34), 1, 0)
+	var pause := _texture_button("btn_pause", Vector2(1482, 17), "Pause (menu)")
+	pause.pressed.connect(func(): _pause_menu.open())
+	_fast_button = _texture_button("btn_fast", Vector2(1540, 17), "Accélérer (x2)")
+	_fast_button.toggle_mode = true
+	_fast_button.toggled.connect(_on_fast_toggled)
+	var menu := _texture_button("btn_settings", Vector2(1599, 17), "Menu")
+	menu.pressed.connect(func(): _pause_menu.open())
+
+	var mm := UiUtil.panel(_root, "minimap", Vector2(1341, 79), 1, 0)
+	_minimap = Minimap.new()
+	_minimap.position = Vector2(17, 15)
+	_minimap.size = Vector2(216, 177)
+	mm.add_child(_minimap)
+	for def in [[&"zoom_in", Vector2(254, 25), "Zoomer (+)"], [&"zoom_out", Vector2(254, 82), "Dézoomer (−)"],
+			[&"center", Vector2(254, 140), "Centrer sur la sélection"]]:
+		var b := UiUtil.hotspot(mm, Rect2(def[1], Vector2(50, 48)), def[2])
+		var cmd: StringName = def[0]
+		b.pressed.connect(func(): command.emit(cmd))
+
+	var obj := UiUtil.panel(_root, "objectives", Vector2(1342, 294), 1, 0)
+	obj.tooltip_text = "Conditions de victoire (GDD §1.2) — Prototype 7"
+	for i in 2:
+		UiUtil.pixel_icon(obj, UiUtil.tex("icon_objective"), Rect2(29, 47 + i * 34, 29, 29)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		UiUtil.label(obj, ["Détruire le château ennemi", "Vaincre le roi ennemi"][i], Vector2(68, 49 + i * 34), 18)
+
+	var hand := UiUtil.panel(_root, "hand", Vector2(1318, 462), 1, 0)
+	hand.tooltip_text = "Main de cartes — système de cartes au Prototype 5"
+
+
+func _build_bottom() -> void:
+	var portrait := UiUtil.panel(_root, "portrait", Vector2(9, 642), 0, 1)
+	_portrait = UiUtil.pixel_icon(portrait, null, Rect2(30, 40, 226, 170))
+	_portrait_name = UiUtil.label(portrait, "", Vector2(16, 214), 18, UiUtil.COLOR_GOLD)
+	_portrait_name.size = Vector2(254, 30)
+	_portrait_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for i in 4:
+		UiUtil.hotspot(portrait, Rect2(269, 32 + i * 58, 55, 52), "À définir").disabled = true
+
+	var info := UiUtil.panel(_root, "info", Vector2(354, 690), 0, 1)
+	_info = UiUtil.label(info, "", Vector2(30, 34), 17)
+	_info.size = Vector2(530, 166)
+	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_info.clip_text = true
+
+	_build_panel = BuildPanel.new()
+	_root.add_child(_build_panel)
+	UiUtil.anchor(_build_panel, Vector2(953, 683), Vector2(427, 230), 1, 1)
+	_build_panel.build_requested.connect(func(d): build_requested.emit(d))
+	_build_panel.hovered.connect(func(t): _hover_text = t)
+
+	var cmds := CommandPanel.new()
+	_root.add_child(cmds)
+	UiUtil.anchor(cmds, Vector2(1391, 684), Vector2(268, 233), 1, 1)
+	cmds.command.connect(func(c): command.emit(c))
+
+
+func _on_fast_toggled(on: bool) -> void:
+	Engine.time_scale = 2.0 if on else 1.0
+	_fast_button.modulate = UiUtil.COLOR_GOLD if on else Color.WHITE
+
+
+func _texture_button(name: String, pos: Vector2, tooltip: String) -> TextureButton:
+	var b := TextureButton.new()
+	b.texture_normal = UiUtil.tex(name)
+	b.tooltip_text = tooltip
+	b.focus_mode = Control.FOCUS_NONE
+	_root.add_child(b)
+	UiUtil.anchor(b, pos, b.texture_normal.get_size(), 1, 0)
+	return b
+
+
+# --- Mise à jour ---------------------------------------------------------------------
+
+func _process(delta: float) -> void:
+	if not get_tree().paused:
+		_game_time += delta
+	_clock_label.text = "%02d:%02d" % [int(_game_time) / 60, int(_game_time) % 60]
+	_refresh_resources()
+	_refresh_selection()
+	_build_panel.team = _team
+	_build_panel.refresh()
+	_notice_time -= delta
+	_notice.visible = _notice_time > 0.0
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_P:
+		_pause_menu.open()
 
 
 func _refresh_resources() -> void:
 	if economy_system == null:
 		return
 	var econ := economy_system.economy(_team)
-	for r in ResourceTypes.ALL:
-		var l: Label = _resource_labels[r]
-		l.text = "%d / %d" % [econ.get_amount(r), econ.capacity(r)]
-		var warn := r == ResourceTypes.FOOD and econ.get_amount(r) == 0
-		l.add_theme_color_override("font_color", Color(1, 0.45, 0.4) if warn else Color(0.93, 0.9, 1))
+	for r in _amount_labels:
+		var amount := econ.get_amount(r)
+		var l: Label = _amount_labels[r]
+		l.text = str(amount)
+		l.tooltip_text = "%s : %d / %d" % [ResourceTypes.NAMES[r], amount, econ.capacity(r)]
+		var empty_food: bool = r == ResourceTypes.FOOD and amount == 0
+		l.add_theme_color_override("font_color", UiUtil.COLOR_LOSS if empty_food
+				else (UiUtil.COLOR_GOLD if econ.is_full(r) else UiUtil.COLOR_TEXT))
+		var rate: int = econ.last_income.get(r, 0)
+		var rl: Label = _rate_labels[r]
+		rl.text = "" if rate == 0 else "(%+d)" % rate
+		rl.add_theme_color_override("font_color", UiUtil.COLOR_GAIN if rate > 0 else UiUtil.COLOR_LOSS)
+	var count := 0
+	for n in get_tree().get_nodes_in_group(Individual.GROUP):
+		if n.team == _team and n.is_alive():
+			count += 1
+	_units_label.text = str(count)
 
 
-# --- Menu Construire ------------------------------------------------------------
-
-func _build_menu() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.offset_left = 12
-	panel.offset_bottom = -12
-	var vb := VBoxContainer.new()
-	var title := Label.new()
-	title.text = "Construire"
-	title.theme_type_variation = &"TitleLabel"
-	vb.add_child(title)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	var list := BuildingDatabase.load_all().values().filter(func(b): return b.player_buildable)
-	list.sort_custom(func(a, b): return [a.category, a.display_name] < [b.category, b.display_name])
-	for data in list:
-		var b := Button.new()
-		b.text = data.display_name
-		b.icon = data.sprite
-		b.expand_icon = false
-		b.focus_mode = Control.FOCUS_NONE
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 14)
-		b.add_theme_constant_override("icon_max_width", 20)
-		b.custom_minimum_size = Vector2(150, 34)
-		b.tooltip_text = _building_tooltip(data)
-		b.pressed.connect(func(): build_requested.emit(data))
-		grid.add_child(b)
-		_build_buttons.append([b, data])
-	vb.add_child(grid)
-	_build_hint = Label.new()
-	_build_hint.add_theme_font_size_override("font_size", 13)
-	_build_hint.text = "Survolez un bouton pour voir le coût."
-	vb.add_child(_build_hint)
-	panel.add_child(vb)
-	add_child(panel)
-	for pair in _build_buttons:
-		var btn: Button = pair[0]
-		var d: BuildingData = pair[1]
-		btn.mouse_entered.connect(func(): _build_hint.text = "%s : %s" % [d.display_name, ResourceTypes.format(d.cost)])
+func _refresh_selection() -> void:
+	_selection = _selection.filter(func(s): return is_instance_valid(s) and s.is_alive())
+	if _selection.is_empty():
+		_portrait.texture = null
+		_portrait_name.text = ""
+	else:
+		_portrait.texture = _selection[0].data.sprite
+		_portrait_name.text = _selection[0].data.display_name + ("" if _selection.size() == 1 else "  +%d" % (_selection.size() - 1))
+	if _hover_text != "":
+		_info.text = _hover_text
+	elif _selection.is_empty():
+		_info.text = "%s\n\n%s" % [GameConfig.TEAM_NAMES[_team], HELP]
+	else:
+		var lines: Array[String] = []
+		for s in _selection.slice(0, 7):
+			lines.append("%s — %d/%d individus · %d/%d PV · %s" % [s.data.display_name, s.alive_count(),
+					s.data.squad_size, s.total_hp(), s.max_total_hp(), _status(s)])
+		if _selection.size() > 7:
+			lines.append("… et %d autres escouades" % (_selection.size() - 7))
+		_info.text = "\n".join(lines)
 
 
-static func _building_tooltip(d: BuildingData) -> String:
-	var lines := [d.display_name, "Coût : " + ResourceTypes.format(d.cost)]
-	lines.append("Construction : " + ("immédiate" if d.build_turns == 0 else "%d tours (1 ouvrier)" % d.build_turns))
-	if not d.storage.is_empty():
-		lines.append("Stockage : +" + ResourceTypes.format(d.storage))
-	if not d.production.is_empty():
-		lines.append("Production / tour : " + ResourceTypes.format(d.production))
-	if not d.upkeep.is_empty():
-		lines.append("Consommation / tour : " + ResourceTypes.format(d.upkeep))
-	if d.workers > 0:
-		lines.append("Fournit %d ouvriers" % d.workers)
-	return "\n".join(lines)
+static func _status(s: Squad) -> String:
+	var status: String = ["Repos", "Déplacement", "Soin" if s.data.action == UnitData.ActionType.HEAL else "Combat",
+			"Construction" if s.work_target is Building else "Récolte"][s.state]
+	if s.state == Squad.State.WORKING and not s.is_fed():
+		status += " (sans nourriture)"
+	if s.is_burning():
+		status += " · Brûlure"
+	return status
 
 
-func _refresh_build_buttons() -> void:
-	if economy_system == null:
-		return
-	var econ := economy_system.economy(_team)
-	for pair in _build_buttons:
-		pair[0].disabled = not econ.can_afford(pair[1].cost)
+# --- API utilisée par la scène et le contrôleur de sélection ----------------------
+
+func on_selection_changed(selection: Array[Squad]) -> void:
+	_selection = selection.duplicate()
+
+
+func on_team_changed(team: int) -> void:
+	_team = team
 
 
 func show_notice(text: String) -> void:
@@ -218,82 +270,3 @@ func on_build_mode_changed(data: BuildingData) -> void:
 		show_notice("Placer : %s — clic dans votre royaume · Échap pour annuler" % data.display_name)
 	else:
 		_notice_time = 0.0
-
-
-
-func _process(delta: float) -> void:
-	# Rafraîchissement léger : PV, états et ressources changent en continu.
-	_refresh()
-	_refresh_resources()
-	_refresh_build_buttons()
-	_notice_time -= delta
-	_notice.visible = _notice_time > 0.0
-
-
-func on_selection_changed(selection: Array[Squad]) -> void:
-	_selection = selection.duplicate()
-	_dirty = true
-
-
-func on_team_changed(team: int) -> void:
-	_team = team
-	_dirty = true
-
-
-func _refresh() -> void:
-	_team_label.text = "Vous contrôlez : %s" % GameConfig.TEAM_NAMES[_team]
-	_team_label.add_theme_color_override("font_color", GameConfig.TEAM_COLORS[_team].lightened(0.3))
-	_selection = _selection.filter(func(s): return is_instance_valid(s) and s.is_alive())
-	_selection_panel.visible = not _selection.is_empty()
-	if _dirty or _selection_box.get_child_count() != _selection.size():
-		_rebuild_cards()
-	for i in _selection.size():
-		_update_card(_selection_box.get_child(i), _selection[i])
-
-
-func _rebuild_cards() -> void:
-	_dirty = false
-	for c in _selection_box.get_children():
-		_selection_box.remove_child(c)
-		c.queue_free()
-	for s in _selection:
-		_selection_box.add_child(_make_card(s))
-
-
-func _make_card(s: Squad) -> Control:
-	var card := PanelContainer.new()
-	card.theme_type_variation = &"SlotPanel"
-	var hb := HBoxContainer.new()
-	var portrait := TextureRect.new()
-	portrait.texture = s.data.sprite
-	portrait.custom_minimum_size = Vector2(48, 48)
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	hb.add_child(portrait)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 0)
-	var title := Label.new()
-	title.name = "Title"
-	title.theme_type_variation = &"TitleLabel"
-	title.add_theme_font_size_override("font_size", 14)
-	vb.add_child(title)
-	var info := Label.new()
-	info.name = "Info"
-	info.add_theme_font_size_override("font_size", 13)
-	vb.add_child(info)
-	hb.add_child(vb)
-	card.add_child(hb)
-	return card
-
-
-func _update_card(card: Control, s: Squad) -> void:
-	var vb := card.get_child(0).get_child(1)
-	vb.get_node("Title").text = s.data.display_name
-	var status: String = ["Repos", "Déplacement", "Soin" if s.data.action == UnitData.ActionType.HEAL else "Combat",
-			"Construction" if s.work_target is Building else "Récolte"][s.state]
-	if s.state == Squad.State.WORKING and not s.is_fed():
-		status += " (sans nourriture)"
-	if s.is_burning():
-		status += " · Brûlure"
-	vb.get_node("Info").text = "%d/%d individus\n%d/%d PV · %s" % [
-		s.alive_count(), s.data.squad_size, s.total_hp(), s.data.max_total_hp(), status]

@@ -19,7 +19,7 @@ func _ready() -> void:
 	add_child(economy)
 	economy.workers_requested.connect(_on_workers_requested)
 	DepositLayout.spawn_all(map, economy, map)
-	hud.economy_system = economy
+	hud.setup(map, camera, economy)
 	hud.build_requested.connect(selection.start_build)
 	selection.economy_system = economy
 	selection.build_mode_changed.connect(hud.on_build_mode_changed)
@@ -31,7 +31,7 @@ func _ready() -> void:
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	_spawn_test_armies()
 	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
-	camera.set_zoom_level(2.0)
+	camera.set_zoom_level(2.6)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
 
 
@@ -75,3 +75,18 @@ func _on_hud_command(cmd: StringName) -> void:
 		&"zoom_in": camera.zoom_in()
 		&"zoom_out": camera.zoom_out()
 		&"switch_team": selection.toggle_team()
+		&"move": selection.start_order_mode(SelectionController.OrderMode.MOVE)
+		&"attack": selection.start_order_mode(SelectionController.OrderMode.ATTACK)
+		&"cancel": selection.cancel()
+		&"center": _center_on_selection()
+
+
+func _center_on_selection() -> void:
+	if selection.selected.is_empty():
+		selection.notify.emit("Aucune escouade choisie.")
+		return
+	var sum := Vector2.ZERO
+	for s in selection.selected:
+		sum += s.center()
+	camera.position = sum / selection.selected.size()
+	camera.pan(Vector2.ZERO)

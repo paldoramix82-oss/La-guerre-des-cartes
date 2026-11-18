@@ -29,6 +29,9 @@ const COLOR_WORK := Color(1.0, 0.8, 0.3)
 
 var map: GameMap
 var economy_system: EconomySystem
+## Ordre en attente d'un clic (boutons Déplacer / Attaquer du panneau de commandes).
+enum OrderMode { NONE, MOVE, ATTACK }
+var order_mode: OrderMode = OrderMode.NONE
 ## Bâtiment en cours de placement (mode construction), ou null.
 var build_data: BuildingData = null
 var _hover_world := Vector2.ZERO
@@ -93,10 +96,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_SPACE:
 				stop_selected()
 			KEY_ESCAPE:
-				if build_data:
-					cancel_build()
-				else:
-					set_selection([])
+				cancel()
 			KEY_A:
 				if event.meta_pressed or event.ctrl_pressed:
 					select_all()
@@ -104,6 +104,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Clic simple (sans glisser) : sélection ou ordre selon ce qui est sous le curseur.
 func _on_click(world_pos: Vector2, shift: bool, alt: bool) -> void:
+	if order_mode != OrderMode.NONE:
+		_apply_order_mode(world_pos)
+		return
 	var clicked := squad_at(world_pos)
 	if clicked and clicked.team == controlled_team and not alt:
 		if shift:
@@ -118,6 +121,39 @@ func _on_click(world_pos: Vector2, shift: bool, alt: bool) -> void:
 		return
 	# Terrain, ennemi, gisement, chantier, ou Option + clic sur un allié : ordre à la sélection.
 	issue_order_at(world_pos)
+
+
+# --- Ordres en deux temps (boutons Déplacer / Attaquer) -----------------------------
+
+func start_order_mode(mode: OrderMode) -> void:
+	if selected.is_empty():
+		notify.emit("Choisissez d'abord une escouade.")
+		return
+	order_mode = mode
+	notify.emit("Cliquez sur la destination." if mode == OrderMode.MOVE else "Cliquez sur un ennemi à attaquer.")
+
+
+func _apply_order_mode(world_pos: Vector2) -> void:
+	var mode := order_mode
+	order_mode = OrderMode.NONE
+	if mode == OrderMode.MOVE:
+		move_selected_to(world_pos)
+		return
+	var clicked := squad_at(world_pos)
+	if clicked == null or clicked.team == controlled_team:
+		notify.emit("Pas d'ennemi ici.")
+		return
+	issue_order_at(world_pos)
+
+
+## Annuler : quitte le mode en cours, sinon désélectionne.
+func cancel() -> void:
+	if build_data:
+		cancel_build()
+	elif order_mode != OrderMode.NONE:
+		order_mode = OrderMode.NONE
+	else:
+		set_selection([])
 
 
 # --- Mode construction ---------------------------------------------------------
@@ -240,8 +276,20 @@ func issue_order_at(world_pos: Vector2) -> void:
 		return
 	if not acted:
 		_show_marker(world_pos, COLOR_MOVE)
-	# Déplacement de groupe : une case libre par individu autour du point visé ;
-	# les escouades les plus proches prennent les cases les plus centrales.
+	_move_group(movers, world_pos)
+
+
+## Déplace toute la sélection vers `world_pos` (sans attaquer ni travailler).
+func move_selected_to(world_pos: Vector2) -> void:
+	if selected.is_empty():
+		return
+	_show_marker(world_pos, COLOR_MOVE)
+	_move_group(selected.duplicate(), world_pos)
+
+
+## Déplacement de groupe : une case libre par individu autour du point visé ;
+## les escouades les plus proches prennent les cases les plus centrales.
+func _move_group(movers: Array, world_pos: Vector2) -> void:
 	var center := map.world_to_cell(world_pos)
 	var center_world := map.cell_to_world(center)
 	movers.sort_custom(func(a, b): return a.center().distance_squared_to(center_world) < b.center().distance_squared_to(center_world))
