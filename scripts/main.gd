@@ -18,7 +18,7 @@ func _ready() -> void:
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	_spawn_test_armies()
 	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
-	camera.zoom = Vector2(1.5, 1.5)
+	camera.zoom = Vector2(2.0, 2.0)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
 
 
@@ -26,16 +26,18 @@ func _ready() -> void:
 func _spawn_test_armies() -> void:
 	for team in 2:
 		var x := 6 if team == 0 else map.width - 7
-		var start_y := map.height / 2 - TEST_ARMY.size() / 2
+		# Une escouade toutes les 3 lignes : ses individus se placent autour (une case chacun).
+		var start_y := map.height / 2 - (TEST_ARMY.size() * 3) / 2 + 1
 		for i in TEST_ARMY.size():
 			var unit := UnitDatabase.get_unit(TEST_ARMY[i])
 			if unit == null:
 				push_error("Unité inconnue : %s" % TEST_ARMY[i])
 				continue
-			spawn_squad(unit, team, map.nearest_walkable(Vector2i(x, start_y + i)))
+			spawn_squad(unit, team, map.nearest_walkable(Vector2i(x, start_y + i * 3)))
 
 
 func spawn_squad(unit: UnitData, team: int, cell: Vector2i) -> Squad:
-	var squad := Squad.new().setup(unit, team, map, cell)
+	var squad := Squad.new()
 	squads_root.add_child(squad)
+	squad.setup(unit, team, map, cell)
 	return squad

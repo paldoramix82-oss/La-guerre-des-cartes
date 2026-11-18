@@ -76,7 +76,7 @@ func _finish_selection(additive: bool) -> void:
 	if _dragging:
 		var rect := Rect2(_drag_start, get_global_mouse_position() - _drag_start).abs()
 		for s in _all_squads():
-			if s.team == controlled_team and rect.has_point(s.global_position):
+			if s.team == controlled_team and s.members.any(func(m): return rect.has_point(m.global_position)):
 				picked.append(s)
 	else:
 		var s := squad_at(get_global_mouse_position())
@@ -89,10 +89,11 @@ func squad_at(world_pos: Vector2) -> Squad:
 	var best: Squad = null
 	var best_d := GameConfig.TILE_SIZE * 0.6
 	for s in _all_squads():
-		var d: float = s.global_position.distance_to(world_pos)
-		if d < best_d:
-			best = s
-			best_d = d
+		for m in s.members:
+			var d: float = m.global_position.distance_to(world_pos)
+			if d < best_d:
+				best = s
+				best_d = d
 	return best
 
 
@@ -108,13 +109,20 @@ func issue_order_at(world_pos: Vector2) -> void:
 			movers.append(s)
 	if movers.is_empty():
 		return
-	# Déplacement de groupe : une case distincte par escouade autour du point visé.
+	# Déplacement de groupe : une case libre par individu autour du point visé ;
+	# les escouades les plus proches prennent les cases les plus centrales.
 	var center := map.world_to_cell(world_pos)
-	var cells := map.spread_cells(center, movers.size())
 	var center_world := map.cell_to_world(center)
-	movers.sort_custom(func(a, b): return a.position.distance_squared_to(center_world) < b.position.distance_squared_to(center_world))
-	for i in movers.size():
-		movers[i].order_move(cells[i] if i < cells.size() else center)
+	movers.sort_custom(func(a, b): return a.center().distance_squared_to(center_world) < b.center().distance_squared_to(center_world))
+	var all_members: Array = []
+	for s in movers:
+		all_members.append_array(s.members)
+	var cells := map.spread_cells(center, all_members.size(), all_members)
+	var start := 0
+	for s in movers:
+		var n: int = s.alive_count()
+		s.order_move_cells(cells.slice(start, start + n))
+		start += n
 
 
 func _on_squad_destroyed(squad: Squad) -> void:

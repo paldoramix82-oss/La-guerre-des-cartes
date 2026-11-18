@@ -138,20 +138,74 @@ func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	return result
 
 
-## Cases praticables libres autour de `center`, pour répartir un groupe d'escouades.
-func spread_cells(center: Vector2i, count: int, taken: Array = []) -> Array[Vector2i]:
+# --- Occupation : un individu par case ---------------------------------------
+## Chaque individu réserve la case où il se trouve (ou vers laquelle il se rend).
+## [PROVISOIRE] Les individus en mouvement peuvent traverser des cases occupées ;
+## seules les cases d'arrêt sont exclusives.
+
+var _occupants: Dictionary = {}
+
+
+func reserve(cell: Vector2i, who: Object) -> void:
+	_occupants[cell] = who
+
+
+func release(cell: Vector2i, who: Object) -> void:
+	if _occupants.get(cell) == who:
+		_occupants.erase(cell)
+
+
+func occupant(cell: Vector2i) -> Object:
+	var o = _occupants.get(cell)
+	if o != null and not is_instance_valid(o):
+		_occupants.erase(cell)
+		return null
+	return o
+
+
+## Case praticable et libre (ou réservée par `who` lui-même / par un objet de `ignore`).
+func is_free(cell: Vector2i, who: Object = null, ignore: Array = []) -> bool:
+	if not is_walkable(cell):
+		return false
+	var o := occupant(cell)
+	return o == null or o == who or o in ignore
+
+
+## `count` cases libres autour de `center`, de la plus proche à la plus lointaine.
+func spread_cells(center: Vector2i, count: int, ignore: Array = []) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	center = nearest_walkable(center)
 	var r := 0
-	while result.size() < count and r <= 12:
+	while result.size() < count and r <= 15:
+		# Anneau r, trié par distance réelle : formation compacte (orthogonales d'abord).
+		var ring: Array[Vector2i] = []
 		for dy in range(-r, r + 1):
 			for dx in range(-r, r + 1):
-				if maxi(absi(dx), absi(dy)) != r:
-					continue
-				var c := center + Vector2i(dx, dy)
-				if is_walkable(c) and not (c in taken) and not (c in result):
-					result.append(c)
-					if result.size() >= count:
-						return result
+				if maxi(absi(dx), absi(dy)) == r:
+					ring.append(Vector2i(dx, dy))
+		ring.sort_custom(func(a, b): return a.length_squared() < b.length_squared())
+		for off in ring:
+			var c := center + off
+			if is_free(c, null, ignore) and not (c in result):
+				result.append(c)
+				if result.size() >= count:
+					return result
 		r += 1
 	return result
+
+
+## Case libre à portée `rng` de `target_cell`, la plus proche de `from_cell`.
+## Retourne Vector2i(-1, -1) si aucune.
+func free_cell_in_range(target_cell: Vector2i, rng: int, from_cell: Vector2i, who: Object) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for dy in range(-rng, rng + 1):
+		for dx in range(-rng, rng + 1):
+			var c := target_cell + Vector2i(dx, dy)
+			if c == target_cell or not is_free(c, who):
+				continue
+			var d := Vector2(c - from_cell).length_squared()
+			if d < best_d:
+				best_d = d
+				best = c
+	return best

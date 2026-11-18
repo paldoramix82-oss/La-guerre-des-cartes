@@ -24,19 +24,23 @@ func _run_all() -> void:
 		map.generate_placeholder_layout()
 	_test_all_scripts_compile()
 	_test_unit_data_matches_gdd()
+	_test_one_individual_per_cell()
 	_test_squad_totals()
 	_test_individual_damage_and_removal()
 	_test_squad_destruction()
-	_test_range()
+	_test_range_per_individual()
 	_test_area_patterns()
 	_test_cavalier_circle_hits_multiple()
+	_test_mage_line_hits_two_individuals()
 	_test_pathfinding_avoids_water()
 	_test_movement_speed()
+	_test_group_move_keeps_one_per_cell()
 	_test_attack_order_chases_and_kills()
 	_test_mage_burn()
 	_test_burn_refresh()
 	_test_heal()
 	_test_healer_auto_heals_and_never_attacks()
+	_test_full_battle_invariants()
 	print("\n%d vérifications, %d échec(s)" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -52,12 +56,63 @@ func _clear_squads() -> void:
 	for s in get_nodes_in_group(Squad.GROUP):
 		s.remove_from_group(Squad.GROUP)
 		s.free()
+	map._occupants.clear()
 
 
-func spawn(id: StringName, team: int, cell: Vector2i) -> Squad:
-	var s := Squad.new().setup(UnitDatabase.get_unit(id), team, map, cell)
+## Crée une escouade autour de `cell`, ou exactement sur `cells`.
+func spawn(id: StringName, team: int, cell: Vector2i, cells: Array = []) -> Squad:
+	var s := Squad.new()
 	root.add_child(s)
+	s.setup(UnitDatabase.get_unit(id), team, map, cell, cells)
 	return s
+
+
+func _run_ticks(squads: Array, seconds: float) -> void:
+	var t := 0.0
+	while t < seconds - 0.0001:
+		for s in squads:
+			if is_instance_valid(s):
+				s.tick(0.05)
+		t += 0.05
+
+
+## Toutes les cases occupées par des individus vivants immobiles sont distinctes.
+func _cells_unique() -> bool:
+	var seen := {}
+	for n in get_nodes_in_group(Individual.GROUP):
+		var m := n as Individual
+		if m.is_alive() and not m.is_moving():
+			var c := m.get_cell()
+			if seen.has(c):
+				return false
+			seen[c] = true
+	return true
+
+
+# --- Tests ------------------------------------------------------------------
+
+## Charge tous les scripts et scènes du projet : détecte les erreurs de compilation.
+func _test_all_scripts_compile() -> void:
+	for dir_path in ["res://scripts", "res://scenes"]:
+		for file in _list_files(dir_path):
+			if file.ends_with(".gd"):
+				var script: GDScript = load(file)
+				check(script != null and script.can_instantiate(), "compile : %s" % file)
+			elif file.ends_with(".tscn"):
+				var scene: PackedScene = load(file)
+				check(scene != null and scene.can_instantiate(), "scène : %s" % file)
+
+
+func _list_files(path: String) -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return out
+	for f in dir.get_files():
+		out.append(path + "/" + f)
+	for d in dir.get_directories():
+		out.append_array(_list_files(path + "/" + d))
+	return out
 
 
 func _test_unit_data_matches_gdd() -> void:
@@ -87,40 +142,61 @@ func _test_unit_data_matches_gdd() -> void:
 	check(UnitDatabase.get_unit(&"miner").can_mine, "mineur : peut miner")
 
 
+func _test_one_individual_per_cell() -> void:
+	var w := spawn(&"warrior", 0, Vector2i(5, 5))
+	var w2 := spawn(&"warrior", 0, Vector2i(5, 5))
+	check(w.alive_count() == 4, "escouade de 4 guerriers")
+	var cells := w.cells() + w2.cells()
+	var unique := {}
+	for c in cells:
+		unique[c] = true
+	check(unique.size() == 8, "8 guerriers sur 8 cases distinctes")
+	_clear_squads()
+
+
 func _test_squad_totals() -> void:
 	var w := spawn(&"warrior", 0, Vector2i(5, 5))
 	check(w.total_hp() == 200, "4 guerriers = 200 PV")
-	check(w.alive_count() * w.data.damage == 40, "4 guerriers = 40 dégâts")
+	var a := spawn(&"archer", 1, Vector2i(9, 5), [Vector2i(6, 5), Vector2i(6, 6)])
+	a.members[1].hp = 1000  # absorbe tous les coups
+	var target: Individual = a.members[1]
+	var before := target.hp
+	for m in w.members:
+		CombatSystem.perform_action(m, target)
+	check(before - target.hp == 40, "4 guerriers = 40 dégâts")
 	_clear_squads()
 
 
 func _test_individual_damage_and_removal() -> void:
-	var w := spawn(&"warrior", 0, Vector2i(5, 5))
-	var a := spawn(&"archer", 1, Vector2i(6, 5))
-	CombatSystem.perform_attack(w, a, get_nodes_in_group(Squad.GROUP))
-	# 4 coups de 10 : premier archer (30 PV) meurt après 3 coups, le 4e touche le second.
-	check(a.alive_count() == 1, "un archer retiré de l'escouade")
-	check(a.total_hp() == 20, "archer restant à 20 PV")
+	var w := spawn(&"warrior", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var a := spawn(&"archer", 1, Vector2i(6, 5), [Vector2i(6, 5), Vector2i(7, 5)])
+	var first: Individual = a.members[0]
+	for i in 3:
+		CombatSystem.perform_action(w.members[0], first)
+	check(a.alive_count() == 1, "archer à 0 PV retiré de l'escouade")
+	check(a.total_hp() == 30, "l'autre archer est intact")
+	check(map.occupant(Vector2i(6, 5)) == null, "la case de l'archer mort est libérée")
 	_clear_squads()
 
 
 func _test_squad_destruction() -> void:
-	var w := spawn(&"warrior", 0, Vector2i(5, 5))
-	var m := spawn(&"mage", 1, Vector2i(6, 5))
+	var w := spawn(&"warrior", 0, Vector2i(5, 5), [Vector2i(5, 5), Vector2i(5, 6), Vector2i(5, 4), Vector2i(4, 5)])
+	var m := spawn(&"mage", 1, Vector2i(6, 5), [Vector2i(6, 5)])
 	var destroyed := [false]
 	m.destroyed.connect(func(_s): destroyed[0] = true)
-	CombatSystem.perform_attack(w, m, get_nodes_in_group(Squad.GROUP))
+	for i in 3:
+		CombatSystem.perform_action(w.members[i], m.members[0])
 	check(destroyed[0], "escouade détruite quand tous les individus meurent")
 	check(not m.is_alive(), "mage mort")
 	_clear_squads()
 
 
-func _test_range() -> void:
-	var a := spawn(&"archer", 0, Vector2i(5, 5))
-	var near := spawn(&"warrior", 1, Vector2i(8, 7))
-	var far := spawn(&"warrior", 1, Vector2i(9, 5))
-	check(CombatSystem.in_range(a, near), "archer : cible à 3 cases à portée")
-	check(not CombatSystem.in_range(a, far), "archer : cible à 4 cases hors portée")
+func _test_range_per_individual() -> void:
+	var a := spawn(&"archer", 0, Vector2i(5, 5), [Vector2i(5, 5), Vector2i(5, 9)])
+	var e := spawn(&"warrior", 1, Vector2i(8, 7), [Vector2i(8, 7), Vector2i(9, 5)])
+	check(CombatSystem.in_range(a.members[0], e.members[0]), "archer : cible à 3 cases à portée")
+	check(not CombatSystem.in_range(a.members[0], e.members[1]), "archer : cible à 4 cases hors portée")
+	check(CombatSystem.in_range(a.members[1], e.members[0]), "la portée se mesure depuis la case de chaque individu")
 	_clear_squads()
 
 
@@ -131,19 +207,28 @@ func _test_area_patterns() -> void:
 	check(CombatSystem.affected_cells(mage, Vector2i(0, 0), Vector2i(0, -1)) == [Vector2i(0, -1), Vector2i(0, -2)],
 			"mage : 2 cases verticales")
 	var cav := UnitDatabase.get_unit(&"cavalier")
-	check(CombatSystem.affected_cells(cav, Vector2i(5, 5), Vector2i(6, 5)).size() == 9, "cavalier : cercle de rayon 1")
+	check(CombatSystem.affected_cells(cav, Vector2i(5, 5), Vector2i(6, 5)).size() == 8, "cavalier : les 8 cases autour")
 
 
 func _test_cavalier_circle_hits_multiple() -> void:
-	var c := spawn(&"cavalier", 0, Vector2i(10, 10))
-	var e1 := spawn(&"warrior", 1, Vector2i(11, 10))
-	var e2 := spawn(&"warrior", 1, Vector2i(9, 11))
-	var e3 := spawn(&"warrior", 1, Vector2i(13, 10))
-	var ally := spawn(&"warrior", 0, Vector2i(10, 11))
-	CombatSystem.perform_attack(c, e1, get_nodes_in_group(Squad.GROUP))
-	check(e1.total_hp() == 170 and e2.total_hp() == 170, "cavalier touche les deux ennemis adjacents (2x15)")
-	check(e3.total_hp() == 200, "cavalier ne touche pas un ennemi hors cercle")
-	check(ally.total_hp() == 200, "pas de tir allié")
+	var c := spawn(&"cavalier", 0, Vector2i(10, 10), [Vector2i(10, 10), Vector2i(3, 3)])
+	var e := spawn(&"warrior", 1, Vector2i(11, 10), [Vector2i(11, 10), Vector2i(9, 11), Vector2i(13, 10), Vector2i(11, 11)])
+	var ally := spawn(&"warrior", 0, Vector2i(10, 11), [Vector2i(10, 11)])
+	CombatSystem.perform_action(c.members[0], e.members[0])
+	var hps: Array = e.members.map(func(m): return m.hp)
+	check(hps == [35, 35, 50, 35], "cavalier : touche les 3 guerriers adjacents (15), pas celui à 3 cases (%s)" % [hps])
+	check(ally.total_hp() == 50, "pas de tir allié")
+	_clear_squads()
+
+
+func _test_mage_line_hits_two_individuals() -> void:
+	var m := spawn(&"mage", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var e := spawn(&"warrior", 1, Vector2i(6, 5), [Vector2i(6, 5), Vector2i(7, 5), Vector2i(6, 6)])
+	CombatSystem.perform_action(m.members[0], e.members[0])
+	var hps: Array = e.members.map(func(x): return x.hp)
+	check(hps == [40, 40, 50], "mage : touche les 2 cases alignées, pas la diagonale (%s)" % [hps])
+	check(e.members[0].is_burning() and e.members[1].is_burning() and not e.members[2].is_burning(),
+			"mage : seuls les individus touchés brûlent")
 	_clear_squads()
 
 
@@ -158,118 +243,114 @@ func _test_pathfinding_avoids_water() -> void:
 
 func _test_movement_speed() -> void:
 	# Cavalier : 4 cases/tour -> 4 cases en GameConfig.SECONDS_PER_TURN secondes.
-	var c := spawn(&"cavalier", 0, Vector2i(2, 2))
-	c.order_move(Vector2i(6, 2))
+	var c := spawn(&"cavalier", 0, Vector2i(2, 2), [Vector2i(2, 2), Vector2i(2, 3)])
+	c.order_move_cells([Vector2i(6, 2), Vector2i(6, 3)])
 	var t := 0.0
 	while c.state == Squad.State.MOVING and t < 10.0:
 		c.tick(0.05)
 		t += 0.05
-	check(c.get_cell() == Vector2i(6, 2), "cavalier arrivé à destination")
+	check(c.cells() == [Vector2i(6, 2), Vector2i(6, 3)], "cavaliers arrivés chacun sur leur case")
 	check(absf(t - GameConfig.SECONDS_PER_TURN) < 0.11, "cavalier : 4 cases en 1 tour (%.2fs)" % t)
+	_clear_squads()
+
+
+func _test_group_move_keeps_one_per_cell() -> void:
+	var a := spawn(&"warrior", 0, Vector2i(4, 8))
+	var b := spawn(&"warrior", 0, Vector2i(4, 14))
+	a.order_move(Vector2i(10, 10))
+	b.order_move(Vector2i(10, 10))
+	_run_ticks([a, b], 12.0)
+	check(_cells_unique(), "déplacement vers un même point : un individu par case")
+	check(a.state == Squad.State.IDLE and b.state == Squad.State.IDLE, "les deux escouades sont arrivées")
 	_clear_squads()
 
 
 func _test_attack_order_chases_and_kills() -> void:
 	var w := spawn(&"warrior", 0, Vector2i(2, 10))
-	var m := spawn(&"mage", 1, Vector2i(7, 10))
-	m.state = Squad.State.IDLE
+	var m := spawn(&"mage", 1, Vector2i(8, 10), [Vector2i(8, 10)])
 	w.order_target(m)
-	var t := 0.0
-	while is_instance_valid(m) and m.is_alive() and t < 20.0:
-		w.tick(0.05)
-		t += 0.05
-	check(not m.is_alive(), "le guerrier rejoint et élimine le mage")
-	check(w.total_hp() == 200 or w.alive_count() == 4, "guerrier intact (le mage n'a pas été simulé)")
+	_run_ticks([w], 20.0)
+	check(not m.is_alive(), "les guerriers rejoignent et éliminent le mage")
+	check(w.total_hp() == 200, "guerriers intacts (le mage n'a pas été simulé)")
 	_clear_squads()
 
 
-func _run_ticks(squads: Array, seconds: float) -> void:
-	var t := 0.0
-	while t < seconds - 0.0001:
-		for s in squads:
-			if is_instance_valid(s):
-				s.tick(0.05)
-		t += 0.05
-
-
 func _test_mage_burn() -> void:
-	var m := spawn(&"mage", 0, Vector2i(5, 5))
-	var w := spawn(&"warrior", 1, Vector2i(6, 5))
-	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
-	check(w.total_hp() == 190, "mage : 10 dégâts immédiats")
-	check(w.is_burning(), "mage : la cible brûle")
+	var m := spawn(&"mage", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var w := spawn(&"warrior", 1, Vector2i(10, 5), [Vector2i(6, 5)])
+	var ind: Individual = w.members[0]
+	CombatSystem.perform_action(m.members[0], ind)
+	check(ind.hp == 40, "mage : 10 dégâts immédiats")
+	check(ind.is_burning(), "mage : la cible brûle")
 	w.state = Squad.State.MOVING  # empêche la riposte automatique pendant le test
 	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
-	check(w.total_hp() == 188, "brûlure : 2 dégâts au 1er tour (%d)" % w.total_hp())
+	check(ind.hp == 38, "brûlure : 2 dégâts au 1er tour (%d)" % ind.hp)
 	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
-	check(w.total_hp() == 186, "brûlure : 2 dégâts au 2e tour (%d)" % w.total_hp())
+	check(ind.hp == 36, "brûlure : 2 dégâts au 2e tour (%d)" % ind.hp)
 	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 2)
-	check(w.total_hp() == 186 and not w.is_burning(), "brûlure terminée après 2 tours")
+	check(ind.hp == 36 and not ind.is_burning(), "brûlure terminée après 2 tours")
 	_clear_squads()
 
 
 func _test_burn_refresh() -> void:
-	var m := spawn(&"mage", 0, Vector2i(5, 5))
-	var w := spawn(&"warrior", 1, Vector2i(6, 5))
+	var m := spawn(&"mage", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var w := spawn(&"warrior", 1, Vector2i(10, 5), [Vector2i(6, 5)])
+	var ind: Individual = w.members[0]
 	w.state = Squad.State.MOVING
-	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
-	CombatSystem.perform_attack(m, w, get_nodes_in_group(Squad.GROUP))
-	check(w.burns.size() == 1, "deux brûlures du mage ne se cumulent pas")
+	CombatSystem.perform_action(m.members[0], ind)
+	CombatSystem.perform_action(m.members[0], ind)
+	check(ind.burns.size() == 1, "deux brûlures du mage ne se cumulent pas")
 	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 3)
-	check(w.total_hp() == 200 - 20 - 4, "brûlure renouvelée : 2 tours seulement (%d)" % w.total_hp())
+	check(ind.hp == 50 - 20 - 4, "brûlure renouvelée : 2 tours seulement (%d)" % ind.hp)
 	_clear_squads()
 
 
 func _test_heal() -> void:
-	var h := spawn(&"healer", 0, Vector2i(5, 5))
-	var w := spawn(&"warrior", 0, Vector2i(7, 5))
-	var enemy := spawn(&"warrior", 1, Vector2i(8, 5))
-	w.member_hp = [50, 42, 30]  # un guerrier déjà mort, deux blessés
-	enemy.member_hp = [40, 50, 50, 50]
-	CombatSystem.perform_heal(h, w, get_nodes_in_group(Squad.GROUP))
-	check(w.member_hp == [50, 42, 35], "soin : +5 PV sur l'individu le plus blessé")
-	check(w.alive_count() == 3, "soin : pas de résurrection")
-	check(enemy.total_hp() == 190, "soin : les ennemis de la zone ne sont pas soignés")
-	w.member_hp = [50, 48]
-	CombatSystem.perform_heal(h, w, get_nodes_in_group(Squad.GROUP))
-	check(w.member_hp == [50, 50], "soin : plafonné aux PV max")
+	var h := spawn(&"healer", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var w := spawn(&"warrior", 0, Vector2i(8, 5), [Vector2i(8, 5), Vector2i(9, 5), Vector2i(8, 6)])
+	var enemy := spawn(&"warrior", 1, Vector2i(8, 4), [Vector2i(8, 4)])
+	w.members[0].hp = 30
+	w.members[1].hp = 48
+	w.members[2].hp = 20
+	enemy.members[0].hp = 40
+	CombatSystem.perform_action(h.members[0], w.members[0])
+	var hps: Array = w.members.map(func(x): return x.hp)
+	check(hps == [35, 50, 20], "soin : +5 PV sur les 2 cases alignées, plafonné aux PV max (%s)" % [hps])
+	check(enemy.total_hp() == 40, "soin : les ennemis ne sont pas soignés")
 	check(not CombatSystem.can_target(h, enemy), "soigneur : ne cible pas un ennemi")
-	check(not w.order_target(h) or w.team != h.team, "guerrier : ne cible pas un allié")
+	check(not w.order_target(h), "guerrier : ne cible pas un allié")
 	_clear_squads()
 
 
 func _test_healer_auto_heals_and_never_attacks() -> void:
-	var h := spawn(&"healer", 0, Vector2i(5, 5))
-	var w := spawn(&"warrior", 0, Vector2i(6, 5))
-	var enemy := spawn(&"archer", 1, Vector2i(7, 5))
-	enemy.state = Squad.State.MOVING  # immobile et passif
+	var h := spawn(&"healer", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var w := spawn(&"warrior", 0, Vector2i(7, 5), [Vector2i(7, 5)])
+	var enemy := spawn(&"archer", 1, Vector2i(6, 6), [Vector2i(6, 6)])
+	enemy.state = Squad.State.MOVING  # passif
 	w.state = Squad.State.MOVING
-	w.member_hp = [50, 50, 50, 20]
+	w.members[0].hp = 20
 	_run_ticks([h], GameConfig.SECONDS_PER_TURN * 3)
-	check(w.total_hp() > 170, "soigneur inactif : soigne automatiquement un allié blessé")
-	check(enemy.total_hp() == 60, "soigneur : n'attaque jamais")
+	check(w.total_hp() > 20, "soigneur inactif : soigne automatiquement un allié blessé")
+	check(enemy.total_hp() == 30, "soigneur : n'attaque jamais")
 	_clear_squads()
 
 
-## Charge tous les scripts et scènes du projet : détecte les erreurs de compilation.
-func _test_all_scripts_compile() -> void:
-	for dir_path in ["res://scripts", "res://scenes"]:
-		for file in _list_files(dir_path):
-			if file.ends_with(".gd"):
-				var script: GDScript = load(file)
-				check(script != null and script.can_instantiate(), "compile : %s" % file)
-			elif file.ends_with(".tscn"):
-				var scene: PackedScene = load(file)
-				check(scene != null and scene.can_instantiate(), "scène : %s" % file)
-
-
-func _list_files(path: String) -> Array[String]:
-	var out: Array[String] = []
-	var dir := DirAccess.open(path)
-	if dir == null:
-		return out
-	for f in dir.get_files():
-		out.append(path + "/" + f)
-	for d in dir.get_directories():
-		out.append_array(_list_files(path + "/" + d))
-	return out
+## Deux armées complètes s'affrontent : aucune erreur, un individu par case à l'arrêt.
+func _test_full_battle_invariants() -> void:
+	var army: Array[StringName] = [&"warrior", &"warrior", &"archer", &"cavalier", &"mage", &"healer", &"miner"]
+	var squads: Array = []
+	for team in 2:
+		for i in army.size():
+			var s := spawn(army[i], team, Vector2i(20 if team == 0 else 39, 6 + i * 3))
+			squads.append(s)
+	for s in squads:
+		var enemies := squads.filter(func(o): return o.team != s.team)
+		if s.data.action == UnitData.ActionType.ATTACK:
+			s.order_target(enemies[squads.find(s) % enemies.size()])
+		else:
+			s.order_move(Vector2i(28 if s.team == 0 else 31, 16))
+	_run_ticks(squads, 40.0)
+	var alive := squads.filter(func(s): return is_instance_valid(s) and s.is_alive())
+	check(alive.size() < squads.size(), "bataille : des escouades ont été détruites")
+	check(_cells_unique(), "bataille : un individu par case à l'arrêt")
+	_clear_squads()

@@ -8,8 +8,8 @@ extends RefCounted
 ## temporaires permettant de rendre le prototype jouable. Elles doivent être
 ## validées ou remplacées par le game designer. Voir docs/PROTOTYPE_1.md.
 
-## Taille d'une case en pixels (purement visuel, adaptée aux sprites 24 px).
-const TILE_SIZE: int = 40
+## Taille d'une case en pixels (purement visuel ; un individu par case, sprites 24 px).
+const TILE_SIZE: int = 32
 
 ## [PROVISOIRE] Conversion "tour" -> secondes (GDD §1.2 : les valeurs en tours
 ## doivent être converties en secondes). Un déplacement de 1 = 1 case par tour.
