@@ -20,6 +20,9 @@ func _ready() -> void:
 	economy.workers_requested.connect(_on_workers_requested)
 	economy.squad_recruited.connect(_on_squad_recruited)
 	DepositLayout.spawn_all(map, economy, map)
+	var fx := Effects.new()
+	fx.name = "Effects"
+	add_child(fx)
 	hud.setup(map, camera, economy)
 	hud.build_requested.connect(selection.start_build)
 	hud.recruit_requested.connect(_on_recruit_requested)

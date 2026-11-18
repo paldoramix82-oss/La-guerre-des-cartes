@@ -18,12 +18,26 @@
   1 mineur à 2 / tour = un demi-tour ; 1 mage à 1 / tour = 1 tour.
 - **File** : une seule escouade recrutée à la fois par Caserne ; les autres attendent.
 - **Consommation** (décision de l'auteur, par individu et par tour) : Guerrier 2, Archer 1, Soigneur 1,
-  Mage 1, Cavalier 3, Mineur 2, Ouvrier 2 Nourri.
+  Mage 1, Cavalier 3, Mineur 2 Nourri. Les ouvriers sont nourris par leur cabane (3 Nourri / tour pour
+  les 2) : ils n'ont pas de consommation propre.
 - **Sans nourriture** : l'escouade s'arrête (ni déplacement, ni combat, ni travail) et apparaît grisée ;
   elle repart dès que sa consommation est payée.
 - **Ferme** : produit aussi 2 Organique par tour (décision de l'auteur).
 - Les armées de test du lancement sont désactivées (`GameConfig.SPAWN_TEST_ARMIES`) : la partie
   commence sans unité ; on construit une Cabane Ouvrier, puis une Caserne.
+
+## Animations et effets (purement visuels)
+
+`scripts/fx/effects.gd` (calque d'effets) et `Individual` :
+- marche : petits bonds, l'unité se tourne vers sa destination ;
+- corps à corps : élan vers la cible ; Cavalier : onde autour de lui ;
+- tirs : flèche (Archer), météore orange (Mage), étincelle verte (Soigneur) de l'unité vers sa cible ;
+  éclat sur chaque case touchée par une zone ;
+- chiffres flottants : dégâts en rouge, brûlure en orange, soins en vert ;
+- ouvriers : coups réguliers vers le gisement ou le chantier ;
+- les projectiles sont définis par unité dans les données (`projectile`, `projectile_color`).
+
+Les dégâts restent appliqués au moment du tir (le projectile ne change pas les règles).
 
 ## Commandes
 
@@ -43,6 +57,4 @@
 ## Questions ouvertes
 
 1. Le coût de création est-il **par escouade** (actuel) ou **par individu** ?
-2. **Cabane Ouvrier + ouvriers** : la cabane consomme 3 Nourri / tour et chaque ouvrier 2 : une cabane
-   coûte donc 7 Nourri / tour. Est-ce voulu, ou les 3 de la cabane remplacent-ils ceux des ouvriers ?
-3. Point de ralliement (drapeau) et « gestion des escouades » (fusion, séparation…) : à définir.
+2. Point de ralliement (drapeau) et « gestion des escouades » (fusion, séparation…) : à définir.

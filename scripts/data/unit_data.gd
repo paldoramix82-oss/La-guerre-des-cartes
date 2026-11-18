@@ -71,6 +71,11 @@ func upkeep_for(alive: int) -> Dictionary:
 @export_group("Présentation")
 ## Sprite d'un individu (assets/sprites/units/).
 @export var sprite: Texture2D
+## Projectile affiché à chaque attaque / soin (vide : attaque au corps à corps, avec élan).
+@export var projectile: Texture2D
+@export var projectile_color: Color = Color.WHITE
+## Angle propre du dessin du projectile, en radians (flèche dessinée vers le haut-droite : -PI/4).
+@export var projectile_angle: float = 0.0
 @export var color: Color = Color.WHITE
 ## Points du GDD non encore clarifiés pour cette unité.
 @export_multiline var design_notes: String = ""

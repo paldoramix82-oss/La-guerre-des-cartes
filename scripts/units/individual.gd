@@ -18,6 +18,16 @@ var target: Individual = null
 var burns: Dictionary = {}
 
 var _cooldown := 0.0
+# --- Animation (purement visuelle) ---
+const LUNGE_DURATION := 0.22
+const LUNGE_DISTANCE := 7.0
+const WORK_SWING_INTERVAL := 0.5
+var _anim_time := 0.0
+var _lunge_t := 0.0
+var _lunge_dir := Vector2.ZERO
+## 1 = regarde à droite, -1 = à gauche.
+var _facing := 1.0
+var _work_swing := 0.0
 var _repath_timer := 0.0
 var _flash := 0.0
 var _flash_color := Color.WHITE
@@ -67,6 +77,7 @@ func is_burning() -> bool:
 
 ## Place l'individu directement sur `cell`.
 func place(cell: Vector2i) -> void:
+	_facing = -1.0 if team == 1 else 1.0
 	position = map.cell_to_world(cell)
 	path.clear()
 	_reserve(cell)
@@ -103,20 +114,25 @@ func _release() -> void:
 
 # --- Dégâts, soins, brûlure ---------------------------------------------------
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, text_color: Color = Color(1, 0.4, 0.35)) -> void:
 	if not is_alive() or amount <= 0:
 		return
 	hp -= amount
 	_flash_hit(Color.WHITE)
+	Effects.floating_text(self, position, "-%d" % amount, text_color)
 	if hp <= 0:
+		Effects.burst(self, [position], Color(0.85, 0.85, 0.85))
 		_die()
 
 
 func heal(amount: int) -> void:
 	if not is_alive() or amount <= 0:
 		return
-	hp = mini(data.hp, hp + amount)
+	var healed := mini(data.hp, hp + amount) - hp
+	hp += healed
 	_flash_hit(Color(0.5, 1, 0.5))
+	if healed > 0:
+		Effects.floating_text(self, position, "+%d" % healed, Color(0.5, 1, 0.5))
 
 
 ## Applique (ou renouvelle) une brûlure : `damage` dégâts par tour pendant `turns` tours.
@@ -144,6 +160,15 @@ func _flash_hit(color: Color) -> void:
 ## Brûlures, déplacement, effets visuels.
 func tick(delta: float) -> void:
 	_cooldown = maxf(0.0, _cooldown - delta)
+	if _lunge_t > 0.0:
+		_lunge_t = maxf(0.0, _lunge_t - delta)
+		queue_redraw()
+	if is_moving() and squad.is_fed():
+		_anim_time += delta
+		queue_redraw()
+	elif _anim_time != 0.0:
+		_anim_time = 0.0
+		queue_redraw()
 	if _flash > 0.0:
 		_flash -= delta
 		queue_redraw()
@@ -173,7 +198,9 @@ func update_action(delta: float, target_squad, chase: bool) -> bool:
 			path.clear()
 			_reserve(get_cell())
 		if not is_moving() and _cooldown <= 0.0:
-			CombatSystem.perform_action(self, target)
+			var t := target
+			var touched := CombatSystem.perform_action(self, t)
+			_play_action_fx(t, touched)
 			_cooldown = GameConfig.seconds_per_attack()
 		return true
 	if chase:
@@ -193,6 +220,11 @@ func update_work(delta: float, obj: MapObject, fed: bool) -> void:
 			_reserve(get_cell())
 		if not is_moving() and fed:
 			obj.work(self, delta)
+			_work_swing -= delta
+			if _work_swing <= 0.0:
+				_work_swing = WORK_SWING_INTERVAL
+				_face(obj.position)
+				_start_lunge(obj.position)
 		return
 	_repath_timer -= delta
 	if _repath_timer <= 0.0 or not is_moving():
@@ -241,6 +273,40 @@ func _approach(t: Individual) -> void:
 		move_to(dest)
 
 
+# --- Effets visuels -------------------------------------------------------------------
+
+## Montre qui agit sur qui : projectile (Archer, Mage, Soigneur) ou élan (corps à corps).
+func _play_action_fx(t: Individual, touched: Array) -> void:
+	if not is_instance_valid(t):
+		return
+	_face(t.position)
+	if data.projectile:
+		var up := Vector2(0, -6)
+		Effects.projectile(self, position + up, t.position + up, data.projectile, data.projectile_color, data.projectile_angle)
+		if data.attack_pattern != UnitData.AttackPattern.SINGLE:
+			var cells := CombatSystem.affected_cells(data, get_cell(), t.get_cell())
+			Effects.burst(self, cells.map(func(c): return map.cell_to_world(c)), data.projectile_color)
+	else:
+		_start_lunge(t.position)
+		if data.attack_pattern == UnitData.AttackPattern.CIRCLE:
+			Effects.burst(self, [position], Color(1, 0.85, 0.5))
+
+
+func _start_lunge(toward: Vector2) -> void:
+	_lunge_dir = (toward - position).normalized()
+	_lunge_t = LUNGE_DURATION
+	queue_redraw()
+
+
+func _face(toward: Vector2) -> void:
+	var dx := toward.x - position.x
+	if absf(dx) > 1.0:
+		var f := signf(dx)
+		if f != _facing:
+			_facing = f
+			queue_redraw()
+
+
 func _process_burns(delta: float) -> void:
 	for source in burns.keys():
 		var b: Dictionary = burns[source]
@@ -251,7 +317,7 @@ func _process_burns(delta: float) -> void:
 		b.turns_left -= 1
 		if b.turns_left <= 0:
 			burns.erase(source)
-		take_damage(b.damage)
+		take_damage(b.damage, Color(1, 0.6, 0.2))
 		if not is_alive():
 			return
 
@@ -260,6 +326,7 @@ func _follow_path(delta: float) -> void:
 	var step := GameConfig.move_speed_px(data.move_speed) * delta
 	while step > 0.0 and not path.is_empty():
 		var dest := map.cell_to_world(path[0])
+		_face(dest)
 		var dist := position.distance_to(dest)
 		if dist <= step:
 			position = dest
@@ -276,6 +343,15 @@ func _snap_to_cell(delta: float) -> void:
 
 
 # --- Rendu ------------------------------------------------------------------
+
+## Décalage du sprite : petits bonds en marchant, élan vers la cible en attaquant.
+func _anim_offset() -> Vector2:
+	var off := Vector2(0, -absf(sin(_anim_time * 14.0)) * 2.5)
+	if _lunge_t > 0.0:
+		var k := 1.0 - _lunge_t / LUNGE_DURATION
+		off += _lunge_dir * LUNGE_DISTANCE * sin(k * PI)
+	return off
+
 
 func _draw() -> void:
 	var team_color: Color = GameConfig.TEAM_COLORS[team]
@@ -295,12 +371,11 @@ func _draw() -> void:
 		tint = Color(0.5, 0.5, 0.5)
 	if data.sprite:
 		var size := data.sprite.get_size()
-		# L'équipe 2 regarde vers la gauche.
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(-1.0 if team == 1 else 1.0, 1))
+		draw_set_transform(_anim_offset(), 0.0, Vector2(_facing, 1))
 		draw_texture(data.sprite, -size * 0.5, tint)
 		draw_set_transform(Vector2.ZERO)
 	else:
-		draw_circle(Vector2.ZERO, 7.0, data.color)
+		draw_circle(_anim_offset(), 7.0, data.color)
 	# Barre de PV individuelle.
 	var bar := Rect2(Vector2(-half + 6, -half - 1), Vector2(GameConfig.TILE_SIZE - 12, 3))
 	draw_rect(bar.grow(1), Color(0, 0, 0, 0.75))

@@ -19,7 +19,7 @@ Durées en **tours** (1 tour = `GameConfig.SECONDS_PER_TURN`).
 \* provisoire.
 
 Consommation par individu et par tour : Guerrier 2, Archer 1, Soigneur 1, Mage 1, Cavalier 3,
-Mineur 2, Ouvrier 2 Nourri.
+Mineur 2 Nourri. Ouvrier : nourri par sa Cabane (3 Nourri / tour pour les 2).
 
 ## Bâtiments
 
@@ -61,7 +61,8 @@ Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavalier
 - Gisements : forêt (bois, et nourriture), filons de métal, gisements d'or ; nourriture aussi ailleurs.
 - Or : gisements d'or, mines, pillage, butins de boss et de monstres.
 - Mines : pas de PV, indestructibles ; se capturent (siège) et se reprennent ; produisent un peu d'or et de métal.
-- Cabane Ouvrier : pas de PV, construite d'un coup ; les 3 Nourri / tour sont une **consommation**.
+- Cabane Ouvrier : pas de PV, construite d'un coup ; les 3 Nourri / tour sont une **consommation**
+  qui nourrit directement ses 2 ouvriers (ils ne consomment rien d'autre).
 - Caserne : 4 tours de construction, pas de PV, indestructible.
 - « Cabane Garde » : nombre de cabanes de garde fournies autour du bâtiment pour le protéger.
 - Construction : il faut des ouvriers ; plus il y en a, plus c'est rapide.

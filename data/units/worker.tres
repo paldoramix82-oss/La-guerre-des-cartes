@@ -18,7 +18,4 @@ move_speed = 2.0
 color = Color(0.8, 0.7, 0.5, 1)
 sprite = ExtResource("2_sprite")
 is_worker = true
-design_notes = "Fourni par la Cabane Ouvrier (2 par cabane). PV 30 et déplacement 2 : [PROVISOIRE], non définis par l'auteur."
-upkeep = {
-&"food": 2
-}
+design_notes = "Fourni par la Cabane Ouvrier (2 par cabane), qui le nourrit (3 Nourri / tour) : pas de consommation propre. PV 30 et déplacement 2 : [PROVISOIRE], non définis par l'auteur."

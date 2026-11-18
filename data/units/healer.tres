@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/glyphs/sparkle.png" id="3_proj"]
 [ext_resource type="Texture2D" path="res://assets/sprites/units/soigneur.png" id="2_sprite"]
 
 [resource]
@@ -27,3 +28,5 @@ design_notes = "Soigne 5 PV, Zone 2, portée 3. N'inflige pas de dégâts."
 upkeep = {
 &"food": 1
 }
+projectile = ExtResource("3_proj")
+projectile_color = Color(0.5, 1, 0.5, 1)

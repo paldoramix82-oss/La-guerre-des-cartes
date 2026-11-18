@@ -56,6 +56,7 @@ func _run_all() -> void:
 	_test_unfed_squad_stops()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
+	_test_combat_effects()
 	_test_food_shortage_stops_workers()
 	_test_build_mode_and_work_clicks()
 	_test_dead_target_does_not_crash()
@@ -704,9 +705,10 @@ func _test_income_per_turn() -> void:
 # --- Nourriture des unités et recrutement (Prototype 3) -----------------------------
 
 func _test_unit_upkeep_values() -> void:
-	var expected := {&"warrior": 2, &"archer": 1, &"healer": 1, &"mage": 1, &"cavalier": 3, &"miner": 2, &"worker": 2}
+	var expected := {&"warrior": 2, &"archer": 1, &"healer": 1, &"mage": 1, &"cavalier": 3, &"miner": 2}
 	for id in expected:
 		check(UnitDatabase.get_unit(id).upkeep == {&"food": expected[id]}, "%s : %d Nourri / tour par individu" % [id, expected[id]])
+	check(UnitDatabase.get_unit(&"worker").upkeep.is_empty(), "ouvrier : nourri par sa cabane, pas de consommation propre")
 	check(UnitDatabase.get_unit(&"warrior").upkeep_for(4) == {&"food": 8}, "escouade de 4 guerriers : 8 Nourri / tour")
 	var farm := BuildingDatabase.get_building(&"farm")
 	check(farm.production.get(&"organic", 0) == 2, "ferme : +2 Organique / tour")
@@ -786,3 +788,19 @@ func _test_select_barracks_and_recruit_click() -> void:
 	check(worker.work_target == site, "ouvriers + clic sur un chantier : construire (pas de sélection)")
 	sel.free()
 	_clear_economy(e)
+
+
+## Effets visuels : projectiles et chiffres apparaissent sur le calque d'effets.
+func _test_combat_effects() -> void:
+	var fx := Effects.new()
+	root.add_child(fx)
+	var a := spawn(&"archer", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var w := spawn(&"warrior", 1, Vector2i(8, 5), [Vector2i(8, 5)])
+	a.order_target(w)
+	_run_ticks([a], 0.1)
+	check(fx.get_children().any(func(c): return c is Sprite2D), "archer : une flèche part vers la cible")
+	check(fx.get_child_count() >= 2, "un chiffre de dégâts s'affiche (%d effets)" % fx.get_child_count())
+	check(UnitDatabase.get_unit(&"archer").projectile != null and UnitDatabase.get_unit(&"mage").projectile != null
+			and UnitDatabase.get_unit(&"healer").projectile != null, "archer, mage, soigneur : projectiles définis")
+	fx.free()
+	_clear_squads()
