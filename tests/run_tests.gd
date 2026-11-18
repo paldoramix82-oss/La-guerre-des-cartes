@@ -19,6 +19,7 @@ func _process(_delta: float) -> bool:
 
 func _run_all() -> void:
 	map = GameMap.new()
+	map.auto_generate = false
 	root.add_child(map)
 	if map.tiles.is_empty():
 		map.generate_placeholder_layout()
@@ -57,6 +58,8 @@ func _run_all() -> void:
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
+	_test_map_generator()
+	_test_fog_of_war()
 	_test_food_shortage_stops_workers()
 	_test_build_mode_and_work_clicks()
 	_test_dead_target_does_not_crash()
@@ -803,4 +806,77 @@ func _test_combat_effects() -> void:
 	check(UnitDatabase.get_unit(&"archer").projectile != null and UnitDatabase.get_unit(&"mage").projectile != null
 			and UnitDatabase.get_unit(&"healer").projectile != null, "archer, mage, soigneur : projectiles définis")
 	fx.free()
+	_clear_squads()
+
+
+# --- Grande carte et brouillard de guerre -------------------------------------------
+
+func _test_map_generator() -> void:
+	var m := GameMap.new()
+	m.auto_generate = false
+	root.add_child(m)
+	var t0 := Time.get_ticks_msec()
+	MapGenerator.generate(m, GameConfig.MAP_SEED)
+	var ms := Time.get_ticks_msec() - t0
+	print("  génération de la carte : %d ms" % ms)
+	check(m.width == GameConfig.MAP_WIDTH and m.height == GameConfig.MAP_HEIGHT, "carte immense : %d x %d" % [m.width, m.height])
+	check(ms < 8000, "génération en moins de 8 s (%d ms)" % ms)
+	var sym := true
+	var counts := {}
+	for y in m.height:
+		for x in m.width:
+			var t := m.get_terrain(Vector2i(x, y))
+			counts[t] = counts.get(t, 0) + 1
+			if t != m.get_terrain(Vector2i(m.width - 1 - x, m.height - 1 - y)):
+				sym = false
+	check(sym, "carte symétrique : les deux joueurs ont la même carte")
+	var total := float(m.width * m.height)
+	var forest: float = counts.get(GameMap.Terrain.FOREST, 0) / total
+	var water: float = (counts.get(GameMap.Terrain.WATER, 0) + counts.get(GameMap.Terrain.FORD, 0)) / total
+	print("  forêt %d %%, eau %d %%" % [forest * 100, water * 100])
+	check(forest > 0.25, "forêt géante (%d %% de la carte)" % (forest * 100))
+	check(water > 0.04, "lacs et rivières (%d %% de la carte)" % (water * 100))
+	var bases: Array = m.features[&"bases"]
+	check(m.kingdom_of(bases[0]) == 0 and m.kingdom_of(bases[1]) == 1, "chaque départ est dans son royaume")
+	check(not m.find_path(bases[0], bases[1]).is_empty(), "les deux départs sont reliés")
+	var all_ok := true
+	var targets: Array = m.features[&"mines"] + m.features[&"camps"] + m.features[&"lairs"].values()
+	for e in m.features[&"deposits"]:
+		targets.append(e[1])
+	for c in targets:
+		var near := m.nearest_walkable(c)
+		if m.find_path(bases[0], near).is_empty() and near != bases[0]:
+			all_ok = false
+	check(all_ok, "mines, camps, repaires et gisements accessibles depuis le départ (%d éléments)" % targets.size())
+	check(m.features[&"mines"].has(Vector2i(m.width / 2, m.height / 2)), "une mine au centre de la carte")
+	check(m.features[&"camps"].size() >= 12, "zones de monstres : %d camps" % m.features[&"camps"].size())
+	check(m.features[&"deposits"].size() >= 60, "gisements : %d" % m.features[&"deposits"].size())
+	m.free()
+
+
+func _test_fog_of_war() -> void:
+	var fog := FogOfWar.new()
+	root.add_child(fog)
+	fog.setup(map, 0)
+	var base: Vector2i = map.base_of(0)
+	check(fog.is_cell_visible(base), "brouillard : le point de départ est visible")
+	check(not fog.is_explored(Vector2i(40, 30)), "brouillard : le reste de la carte est inexploré")
+	var cav := spawn(&"cavalier", 0, Vector2i(30, 10), [Vector2i(30, 10)])
+	var enemy := spawn(&"warrior", 1, Vector2i(36, 10), [Vector2i(36, 10)])
+	var far_enemy := spawn(&"warrior", 1, Vector2i(37, 10), [Vector2i(37, 10)])
+	fog.update_now()
+	check(fog.is_cell_visible(Vector2i(36, 10)), "cavalier : vision 4 + 2 = 6 cases")
+	check(not fog.is_cell_visible(Vector2i(37, 10)), "au-delà de 6 cases : hors de vue")
+	check(enemy.members[0].visible and not far_enemy.members[0].visible, "ennemi visible en vue, caché hors de vue")
+	cav.members[0].place(Vector2i(10, 30))
+	fog.update_now()
+	check(fog.is_explored(Vector2i(36, 10)) and not fog.is_cell_visible(Vector2i(36, 10)),
+			"zone quittée : explorée mais plus en vue")
+	check(not enemy.members[0].visible, "ennemi dans une zone explorée hors de vue : caché")
+	var w := spawn(&"warrior", 0, Vector2i(20, 20), [Vector2i(20, 20)])
+	fog.update_now()
+	check(fog.is_cell_visible(Vector2i(23, 20)) and not fog.is_cell_visible(Vector2i(24, 20)), "guerrier : vision 1 + 2 = 3")
+	fog.set_team(1)
+	check(enemy.members[0].visible and not w.members[0].visible, "changement d'équipe : le brouillard suit le joueur contrôlé")
+	fog.free()
 	_clear_squads()

@@ -23,6 +23,7 @@ const GROUND_COLORS := {
 	GameMap.Terrain.WATER: Color(0.18, 0.38, 0.66),
 	GameMap.Terrain.FORD: Color(0.52, 0.58, 0.62),
 	GameMap.Terrain.ROCK: Color(0.24, 0.34, 0.22),
+	GameMap.Terrain.FOREST: Color(0.13, 0.28, 0.16),
 }
 
 var map: GameMap
@@ -69,8 +70,7 @@ func _draw() -> void:
 	for y in map.height:
 		for x in map.width:
 			var cell := Vector2i(x, y)
-			var terrain := map.get_terrain(cell)
-			match terrain:
+			match map.get_terrain(cell):
 				GameMap.Terrain.KINGDOM:
 					if _chance(cell, 1) < DECOR_CHANCE:
 						_draw_small(_texture(NATURE, _pick(DECOR_KINGDOM, cell, 2)), cell)
@@ -78,25 +78,55 @@ func _draw() -> void:
 					if _chance(cell, 1) < DECOR_CHANCE:
 						_draw_small(_texture(NATURE, _pick(DECOR_JUNGLE, cell, 2)), cell)
 				GameMap.Terrain.WATER:
-					if _chance(cell, 1) < WATER_DECOR_CHANCE:
-						_draw_small(_texture(NATURE, _pick(DECOR_WATER, cell, 2)), cell)
+					_draw_water(cell)
 				GameMap.Terrain.FORD:
-					_draw_small(_texture(NATURE, "rock_sand"), cell)
+					if _chance(cell, 3) < 0.5:
+						_draw_small(_texture(NATURE, "rock_sand"), cell)
 	# 3. Frontières des royaumes.
-	var border := Color(1, 1, 1, 0.25)
-	for bx in [GameConfig.KINGDOM_DEPTH, map.width - GameConfig.KINGDOM_DEPTH]:
+	var border := Color(1, 1, 1, 0.22)
+	for bx in [map.kingdom_depth, map.width - map.kingdom_depth]:
 		draw_line(Vector2(bx * ts, 0), Vector2(bx * ts, map.height * ts), border, 2.0)
-	# 4. Obstacles (ligne par ligne pour que les plus bas passent devant).
+	# 4. Repères : camps de monstres, repaires des boss, départs des joueurs.
+	for c in map.features.get(&"camps", []):
+		_draw_obstacle(_texture(PROPS, "bones"), c)
+		_draw_obstacle(_texture(PROPS, "campfire"), c + Vector2i(1, 0))
+	var lairs: Dictionary = map.features.get(&"lairs", {})
+	if lairs.has(&"dragon"):
+		_draw_obstacle(_texture(PROPS, "cave"), lairs[&"dragon"] + Vector2i(0, -2))
+		_draw_obstacle(_texture(PROPS, "chest"), lairs[&"dragon"] + Vector2i(1, -2))
+	if lairs.has(&"witch"):
+		_draw_obstacle(_texture(PROPS, "cauldron"), lairs[&"witch"] + Vector2i(0, 2))
+		_draw_obstacle(_texture(PROPS, "altar"), lairs[&"witch"] + Vector2i(-1, 2))
+	var bases: Array = map.features.get(&"bases", [])
+	for team in bases.size():
+		_draw_base(team, bases[team])
+	# 5. Obstacles : arbres et rochers (ligne par ligne pour que les plus bas passent devant).
 	for y in map.height:
 		for x in map.width:
 			var cell := Vector2i(x, y)
-			if map.get_terrain(cell) != GameMap.Terrain.ROCK:
-				continue
-			var list: Array = OBSTACLE_ROCK if _hash(cell, 3) % 3 == 0 else OBSTACLE_JUNGLE
-			_draw_obstacle(_texture(NATURE, _pick(list, cell, 4)), cell)
-	# 5. Campements décoratifs des deux royaumes (pas encore de bâtiments : Prototype 2).
-	_draw_camp(0, "tent_blue", "banner_blue")
-	_draw_camp(1, "tent_red", "banner")
+			match map.get_terrain(cell):
+				GameMap.Terrain.FOREST:
+					_draw_obstacle(_texture(NATURE, _pick(OBSTACLE_JUNGLE, cell, 4)), cell)
+				GameMap.Terrain.ROCK:
+					_draw_obstacle(_texture(NATURE, _pick(OBSTACLE_ROCK, cell, 4)), cell)
+
+
+## Eau : reflets, nénuphars et roseaux (sur les bords).
+func _draw_water(cell: Vector2i) -> void:
+	var ts := float(GameConfig.TILE_SIZE)
+	var center := map.cell_to_world(cell)
+	if _chance(cell, 5) < 0.18:
+		var wave := _texture("res://assets/sprites/glyphs/", "wave")
+		draw_texture_rect(wave, Rect2(center - Vector2(8, 8), Vector2(16, 16)), false, Color(0.75, 0.88, 1.0, 0.35))
+	var shore := false
+	for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+		var n: Vector2i = cell + d
+		if map.is_inside(n) and map.get_terrain(n) != GameMap.Terrain.WATER and map.get_terrain(n) != GameMap.Terrain.FORD:
+			shore = true
+	if shore and _chance(cell, 1) < 0.35:
+		_draw_small(_texture(NATURE, "reeds"), cell)
+	elif _chance(cell, 1) < WATER_DECOR_CHANCE:
+		_draw_small(_texture(NATURE, "lily"), cell)
 
 
 ## Petit sprite 16 px, centré avec un léger décalage aléatoire.
@@ -114,10 +144,10 @@ func _draw_obstacle(tex: Texture2D, cell: Vector2i) -> void:
 	draw_texture_rect(tex, Rect2(bottom - Vector2(size.x * 0.5, size.y), size), false)
 
 
-func _draw_camp(team: int, tent: String, banner: String) -> void:
-	var x := 2 if team == 0 else map.width - 3
-	var y := map.height / 2
-	for dy in [-6, 6]:
-		_draw_obstacle(_texture(PROPS, tent), Vector2i(x, y + dy))
-	_draw_obstacle(_texture(PROPS, banner), Vector2i(x, y - 8))
-	_draw_obstacle(_texture(PROPS, "campfire"), Vector2i(x, y))
+## Départ d'un joueur (emplacement du futur château) : tentes, bannière, feu de camp.
+func _draw_base(team: int, base: Vector2i) -> void:
+	var dir := 1 if team == 0 else -1
+	_draw_obstacle(_texture(PROPS, "campfire"), base)
+	_draw_obstacle(_texture(PROPS, "banner_blue" if team == 0 else "banner"), base + Vector2i(0, -2))
+	for off in [Vector2i(-2 * dir, -1), Vector2i(-2 * dir, 2)]:
+		_draw_obstacle(_texture(PROPS, "tent_blue" if team == 0 else "tent_red"), base + off)

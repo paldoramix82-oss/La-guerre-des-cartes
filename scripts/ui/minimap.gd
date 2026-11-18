@@ -55,14 +55,19 @@ func _draw() -> void:
 	var r := map_rect()
 	var cell := r.size.x / map.width
 	draw_texture_rect(t, r, false)
+	var fog := FogOfWar.of(self)
 	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
+		if not o.visible:
+			continue
 		var col: Color = Color(1, 0.85, 0.3) if o is Deposit else GameConfig.TEAM_COLORS[o.team].lightened(0.2)
 		draw_rect(Rect2(r.position + Vector2(o.cell) * cell, Vector2(cell, cell)), col)
 	for n in get_tree().get_nodes_in_group(Individual.GROUP):
 		var m := n as Individual
-		if m and m.is_alive():
+		if m and m.is_alive() and m.visible:
 			var p := r.position + m.position / GameConfig.TILE_SIZE * cell
 			draw_rect(Rect2(p - Vector2(UNIT_DOT, UNIT_DOT) * 0.5, Vector2(UNIT_DOT, UNIT_DOT)), GameConfig.TEAM_COLORS[m.team])
+	if fog and fog._texture:
+		draw_texture_rect(fog._texture, r, false)
 	if camera:
 		var view := get_viewport().get_visible_rect().size / camera.zoom
 		var top_left := camera.position - view * 0.5

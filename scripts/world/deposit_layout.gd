@@ -1,6 +1,7 @@
 class_name DepositLayout
 extends RefCounted
-## Emplacements des gisements [PROVISOIRE] (GDD §13 : carte à définir).
+## Gisements : ceux de la carte générée (MapGenerator), ou la disposition fixe
+## ci-dessous pour la petite carte de test.
 ## Positions pour le joueur 1 / la moitié gauche de la jungle ; reproduites par
 ## symétrie (rotation de 180°) pour que les deux joueurs aient la même carte.
 
@@ -18,8 +19,17 @@ const LAYOUT := [
 ]
 
 
+## Gisements de la carte générée (map.features), sinon disposition fixe (petite carte).
 static func spawn_all(map: GameMap, economy: EconomySystem, parent: Node) -> Array[Deposit]:
 	var out: Array[Deposit] = []
+	if map.features.has(&"deposits"):
+		for entry in map.features[&"deposits"]:
+			if map.is_free(entry[1]):
+				var d := Deposit.new()
+				parent.add_child(d)
+				d.setup(DepositDatabase.get_deposit(entry[0]), map, entry[1], economy)
+				out.append(d)
+		return out
 	for entry in LAYOUT:
 		var cell: Vector2i = entry[1]
 		for c in [cell, Vector2i(map.width - 1 - cell.x, map.height - 1 - cell.y)]:

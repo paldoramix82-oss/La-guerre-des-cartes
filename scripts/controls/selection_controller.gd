@@ -270,6 +270,8 @@ func squad_at(world_pos: Vector2) -> Squad:
 	var best_d := GameConfig.TILE_SIZE * 0.6
 	for s in _all_squads():
 		for m in s.members:
+			if not m.visible:
+				continue  # ennemi caché par le brouillard
 			var d: float = m.global_position.distance_to(world_pos)
 			if d < best_d:
 				best = s

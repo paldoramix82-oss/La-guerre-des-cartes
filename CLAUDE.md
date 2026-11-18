@@ -1,6 +1,6 @@
 # Consignes pour Claude
 
-Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`, `docs/PROTOTYPE_2.md`, `docs/PROTOTYPE_3.md`. Valeurs : `docs/VALEURS.md`.
+Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`, `docs/PROTOTYPE_2.md`, `docs/PROTOTYPE_3.md`. Valeurs : `docs/VALEURS.md`. Carte : `docs/CARTE.md`.
 
 ## Règles (GDD §15)
 
@@ -23,4 +23,6 @@ Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. Éta
 - Ne jamais passer à une fonction typée un objet qui peut avoir été libéré (unité morte) :
   vérifier `is_instance_valid()` d'abord, sinon Godot lève « previously freed ».
 - Commandes : tout doit rester jouable au trackpad Mac (un seul bouton, pas de molette).
+- Les tests utilisent la petite carte fixe (`GameMap.generate_placeholder_layout`, `auto_generate = false`) ;
+  la grande carte est testée à part (`_test_map_generator`).
 - Le code et les commentaires sont en français.

@@ -3,26 +3,33 @@ extends Node2D
 ## Grille de la carte : terrain, conversions case <-> monde et pathfinding (GDD §2).
 ## Le rendu est délégué à MapRenderer.
 ##
-## La disposition actuelle est un PLACEHOLDER [PROVISOIRE] : le GDD (§13) laisse
-## dimensions, génération et obstacles à définir. Elle reprend seulement la
-## structure décrite : deux royaumes, une jungle neutre, une rivière.
+## La carte de jeu est produite par MapGenerator (grande carte, forêt, lacs,
+## rivières). `generate_placeholder_layout()` produit la petite carte fixe
+## utilisée par les tests.
 
-enum Terrain { KINGDOM, JUNGLE, WATER, FORD, ROCK }
+enum Terrain { KINGDOM, JUNGLE, WATER, FORD, ROCK, FOREST }
 
-const BLOCKING_TERRAIN := [Terrain.WATER, Terrain.ROCK]
+const BLOCKING_TERRAIN := [Terrain.WATER, Terrain.ROCK, Terrain.FOREST]
 
+## Génère la grande carte au lancement (désactivé par les tests).
+var auto_generate := true
 var width: int = GameConfig.MAP_WIDTH
 var height: int = GameConfig.MAP_HEIGHT
+## Largeur (cases) de chaque royaume depuis son bord.
+var kingdom_depth: int = GameConfig.KINGDOM_DEPTH
 var tiles := PackedInt32Array()
 var astar := AStarGrid2D.new()
+## Éléments placés par le générateur : &"bases" [Vector2i x2], &"mines", &"camps",
+## &"lairs" {&"dragon", &"witch"}, &"deposits" [[id, Vector2i], ...].
+var features: Dictionary = {}
 
 
 var renderer: MapRenderer
 
 
 func _ready() -> void:
-	if tiles.is_empty():
-		generate_placeholder_layout()
+	if tiles.is_empty() and auto_generate:
+		MapGenerator.generate(self, GameConfig.MAP_SEED)
 	renderer = MapRenderer.new()
 	renderer.map = self
 	add_child(renderer)
@@ -30,11 +37,16 @@ func _ready() -> void:
 
 # --- Génération -------------------------------------------------------------
 
+## Petite carte fixe (60 x 36) utilisée par les tests.
 func generate_placeholder_layout() -> void:
+	width = 60
+	height = 36
+	kingdom_depth = 14
+	features = {&"bases": [Vector2i(6, 18), Vector2i(53, 17)]}
 	tiles.resize(width * height)
 	for y in height:
 		for x in width:
-			var in_kingdom := x < GameConfig.KINGDOM_DEPTH or x >= width - GameConfig.KINGDOM_DEPTH
+			var in_kingdom := x < kingdom_depth or x >= width - kingdom_depth
 			_set_tile(Vector2i(x, y), Terrain.KINGDOM if in_kingdom else Terrain.JUNGLE)
 
 	# Rivière verticale au centre (2 cases de large), avec trois gués symétriques.
@@ -56,6 +68,17 @@ func generate_placeholder_layout() -> void:
 				_set_tile(Vector2i(x, y), Terrain.ROCK)
 				_set_tile(Vector2i(width - 1 - x, height - 1 - y), Terrain.ROCK)
 
+	_rebuild_navigation()
+	if renderer:
+		renderer.queue_redraw()
+
+
+func set_tile(cell: Vector2i, terrain: int) -> void:
+	tiles[cell.y * width + cell.x] = terrain
+
+
+## Fin de génération : navigation et rendu.
+func finish_generation() -> void:
 	_rebuild_navigation()
 	if renderer:
 		renderer.queue_redraw()
@@ -116,9 +139,9 @@ func object_at(cell: Vector2i) -> Object:
 
 ## Royaume auquel appartient la case : 0, 1, ou -1 (jungle).
 func kingdom_of(cell: Vector2i) -> int:
-	if cell.x < GameConfig.KINGDOM_DEPTH:
+	if cell.x < kingdom_depth:
 		return 0
-	if cell.x >= width - GameConfig.KINGDOM_DEPTH:
+	if cell.x >= width - kingdom_depth:
 		return 1
 	return -1
 
@@ -129,6 +152,11 @@ func cell_to_world(cell: Vector2i) -> Vector2:
 
 func world_to_cell(pos: Vector2) -> Vector2i:
 	return Vector2i((pos / GameConfig.TILE_SIZE).floor())
+
+
+func base_of(team: int) -> Vector2i:
+	var bases: Array = features.get(&"bases", [])
+	return bases[team] if team < bases.size() else Vector2i(kingdom_depth / 2, height / 2)
 
 
 func world_size() -> Vector2:

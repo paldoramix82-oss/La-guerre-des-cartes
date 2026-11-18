@@ -10,6 +10,7 @@ const TEST_ARMY: Array[StringName] = [&"warrior", &"warrior", &"archer", &"caval
 @onready var camera: CameraController = $Camera
 @onready var hud: Hud = $HUD
 var economy: EconomySystem
+var fog: FogOfWar
 
 
 func _ready() -> void:
@@ -20,6 +21,14 @@ func _ready() -> void:
 	economy.workers_requested.connect(_on_workers_requested)
 	economy.squad_recruited.connect(_on_squad_recruited)
 	DepositLayout.spawn_all(map, economy, map)
+	for c in map.features.get(&"mines", []):
+		var mine := MineSite.new()
+		map.add_child(mine)
+		mine.setup(map, c, c == Vector2i(map.width / 2, map.height / 2))
+	fog = FogOfWar.new()
+	fog.name = "FogOfWar"
+	add_child(fog)
+	fog.setup(map, 0)
 	var fx := Effects.new()
 	fx.name = "Effects"
 	add_child(fx)
@@ -33,11 +42,12 @@ func _ready() -> void:
 	selection.map = map
 	selection.selection_changed.connect(hud.on_selection_changed)
 	selection.controlled_team_changed.connect(hud.on_team_changed)
+	selection.controlled_team_changed.connect(func(t): fog.set_team(t); camera.position = map.cell_to_world(map.base_of(t)))
 	hud.command.connect(_on_hud_command)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	if GameConfig.SPAWN_TEST_ARMIES:
 		_spawn_test_armies()
-	camera.position = map.cell_to_world(Vector2i(GameConfig.KINGDOM_DEPTH - 4, map.height / 2))
+	camera.position = map.cell_to_world(map.base_of(0) + Vector2i(4, 0))
 	camera.set_zoom_level(2.6)
 	add_child(MusicPlayer.create(GameConfig.MUSIC_BATTLE))
 

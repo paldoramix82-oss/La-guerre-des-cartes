@@ -18,12 +18,22 @@ const SECONDS_PER_TURN: float = 1.0
 ## [PROVISOIRE] Nombre de tours entre deux attaques d'une escouade.
 const ATTACK_INTERVAL_TURNS: float = 1.0
 
-## [PROVISOIRE] Dimensions de la carte, en cases (GDD §13 : "Carte : à définir").
-const MAP_WIDTH: int = 60
-const MAP_HEIGHT: int = 36
+## Dimensions de la carte, en cases. L'auteur veut une carte immense (parties
+## d'une trentaine de minutes). Nombres impairs : une case exacte au centre.
+const MAP_WIDTH: int = 161
+const MAP_HEIGHT: int = 97
+## [PROVISOIRE] Largeur (en cases) de chaque royaume depuis le bord de la carte.
+const KINGDOM_DEPTH: int = 28
+## Graine de génération de la carte (même carte à chaque partie tant qu'elle ne change pas).
+const MAP_SEED: int = 7031
 
-## [PROVISOIRE] Profondeur (en cases) de chaque royaume depuis le bord de la carte.
-const KINGDOM_DEPTH: int = 14
+## --- Brouillard de guerre (décision de l'auteur) ---
+## Vision d'une unité = son déplacement + VISION_BONUS cases.
+const VISION_BONUS: int = 2
+## [PROVISOIRE] Vision d'un bâtiment terminé, en cases.
+const BUILDING_VISION: int = 3
+## [PROVISOIRE] Zone révélée autour du point de départ (emplacement du futur château).
+const BASE_VISION: int = 9
 
 ## Fréquence de recalcul du chemin quand une escouade poursuit une cible (s).
 const REPATH_INTERVAL: float = 0.5
