@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/card_data.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/coin.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"royal_treasure"
+display_name = "Trésor royal"
+category = 0
+mana_cost = 3
+effect = 1
+params = { "resources": { &"gold": 200 } }
+single_use = false
+description = "Recevez immédiatement 200 Gd."
+icon = ExtResource("2_icon")
+design_notes = "Exemple du GDD §7.1. Coût en mana : [PROVISOIRE]."

@@ -38,7 +38,10 @@ var camera: Camera2D
 var _root: Control
 var _amount_labels: Dictionary = {}
 var _rate_labels: Dictionary = {}
-var _units_label: Label
+var _mana_label: Label
+var _mana_rate: Label
+var _hand: HandPanel
+var card_system: CardSystem
 var _clock_label: Label
 var _fast_button: TextureButton
 var _minimap: Minimap
@@ -100,8 +103,11 @@ func _build_top_bar() -> void:
 				CanvasItem.TEXTURE_FILTER_LINEAR if icon_path.begins_with("hud:") else CanvasItem.TEXTURE_FILTER_NEAREST
 		_amount_labels[r] = UiUtil.label(bar, "0", Vector2(x + 38, 13), 22)
 		_rate_labels[r] = UiUtil.label(bar, "", Vector2(x + 38, 35), 14, UiUtil.COLOR_GAIN)
-	UiUtil.pixel_icon(bar, UiUtil.tex("icon_population"), Rect2(690, 13, 44, 34)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_units_label = UiUtil.label(bar, "0", Vector2(742, 14), 22)
+	# Mana (cristal bleu de la maquette), après le séparateur.
+	UiUtil.pixel_icon(bar, UiUtil.tex("icon_mana"), Rect2(682, 12, 36, 38)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_mana_label = UiUtil.label(bar, "0", Vector2(722, 13), 22, Color(0.7, 0.85, 1.0))
+	_mana_rate = UiUtil.label(bar, "", Vector2(722, 35), 14, Color(0.55, 0.75, 1.0))
+	bar.get_child(bar.get_child_count() - 3).tooltip_text = "Mana : sert à jouer les cartes"
 
 
 func _build_top_right() -> void:
@@ -133,8 +139,11 @@ func _build_top_right() -> void:
 		UiUtil.pixel_icon(obj, UiUtil.tex("icon_objective"), Rect2(29, 47 + i * 34, 29, 29)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		UiUtil.label(obj, ["Détruire le château ennemi", "Vaincre le roi ennemi"][i], Vector2(68, 49 + i * 34), 18)
 
-	var hand := UiUtil.panel(_root, "hand", Vector2(1318, 462), 1, 0)
-	hand.tooltip_text = "Main de cartes — système de cartes au Prototype 5"
+	_hand = HandPanel.new()
+	_root.add_child(_hand)
+	UiUtil.anchor(_hand, Vector2(1318, 462), Vector2(344, 188), 1, 0)
+	_hand.hovered.connect(func(t): _hover_text = t)
+	_hand.notify.connect(show_notice)
 
 
 func _build_bottom() -> void:
@@ -215,11 +224,12 @@ func _refresh_resources() -> void:
 		var rl: Label = _rate_labels[r]
 		rl.text = "" if rate == 0 else "(%+d)" % rate
 		rl.add_theme_color_override("font_color", UiUtil.COLOR_GAIN if rate > 0 else UiUtil.COLOR_LOSS)
-	var count := 0
-	for n in get_tree().get_nodes_in_group(Individual.GROUP):
-		if n.team == _team and n.is_alive():
-			count += 1
-	_units_label.text = str(count)
+	if card_system and not card_system.players.is_empty():
+		var p := card_system.player(_team)
+		_mana_label.text = "%d / %d" % [int(p.mana), int(GameConfig.MANA_MAX)]
+		_mana_rate.text = "(+%.2f)" % p.mana_regen()
+		_mana_label.tooltip_text = "Mana : %.1f / %d — régénération %.2f par tour" % [p.mana, int(GameConfig.MANA_MAX), p.mana_regen()]
+		_hand.refresh()
 
 
 func _refresh_selection() -> void:
@@ -296,6 +306,13 @@ func on_building_selected(b: Building) -> void:
 
 func on_team_changed(team: int) -> void:
 	_team = team
+	if card_system and not card_system.players.is_empty():
+		_hand.cards = card_system.player(team)
+
+
+func set_card_system(cs: CardSystem) -> void:
+	card_system = cs
+	_hand.cards = cs.player(_team)
 
 
 func show_notice(text: String) -> void:

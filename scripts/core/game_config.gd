@@ -52,6 +52,18 @@ const BASE_STORAGE := {&"gold": 2000, &"wood": 50, &"metal": 25, &"organic": 25,
 ## aux autres ressources en attendant leur valeur).
 const WORKER_HARVEST_PER_TURN: int = 2
 
+## --- Cartes et mana (GDD §4, §9) ---
+## Limite normale de la main (GDD §9).
+const HAND_LIMIT: int = 3
+## [PROVISOIRE] Régénération naturelle de mana par tour (GDD §13 : à définir).
+const MANA_REGEN_PER_TURN: float = 0.25
+## [PROVISOIRE] Capacité maximale de mana.
+const MANA_MAX: float = 10.0
+## Composition du deck (GDD §9) : 10 bonus, 5 malus, 5 neutres.
+const DECK_BONUS: int = 10
+const DECK_MALUS: int = 5
+const DECK_NEUTRAL: int = 5
+
 ## Outil de test : faire apparaître une armée de chaque côté au lancement.
 ## Désactivé : avec la consommation de nourriture, elle serait affamée en 2 tours ;
 ## les unités se recrutent maintenant à la Caserne.

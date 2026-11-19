@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/card_data.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/sprites/glyphs/star.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"new_draw"
+display_name = "Nouvelle pioche"
+category = 2
+mana_cost = 1
+effect = 6
+params = { "amount": 1 }
+single_use = false
+description = "Piochez une carte supplémentaire (au-delà de la limite)."
+icon = ExtResource("2_icon")
+design_notes = "GDD §7.3. Pioche au-delà de la limite : [PROVISOIRE]. Coût : [PROVISOIRE]."

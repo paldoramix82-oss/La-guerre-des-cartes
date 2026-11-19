@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/card_data.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/sprites/glyphs/fire.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"destruction"
+display_name = "Destruction"
+category = 2
+mana_cost = 1
+effect = 4
+params = {}
+single_use = false
+description = "Choisissez une carte de votre main : elle est défaussée sous le deck."
+icon = ExtResource("2_icon")
+design_notes = "GDD §7.3 « Détruit une carte de sa main ». Sens exact (sous le deck ou définitif) à préciser. Coût : [PROVISOIRE]."

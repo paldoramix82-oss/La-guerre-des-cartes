@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/card_data.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/sprites/glyphs/mask.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"malus_placeholder"
+display_name = "Malédiction (exemple)"
+category = 1
+mana_cost = 0
+effect = 0
+params = {}
+single_use = false
+description = "Carte malus : occupe une place dans la main. Effet à définir."
+icon = ExtResource("2_icon")
+design_notes = "Aucun malus précis dans le GDD : carte d'exemple sans effet, pour tester l'encombrement de la main."

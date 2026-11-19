@@ -60,6 +60,11 @@ func _run_all() -> void:
 	_test_combat_effects()
 	_test_map_generator()
 	_test_fog_of_war()
+	_test_deck_composition()
+	_test_play_card_cycle()
+	_test_malus_occupies_hand()
+	_test_neutral_cards()
+	_test_field_cards_and_mana()
 	_test_food_shortage_stops_workers()
 	_test_build_mode_and_work_clicks()
 	_test_dead_target_does_not_crash()
@@ -880,3 +885,130 @@ func _test_fog_of_war() -> void:
 	check(enemy.members[0].visible and not w.members[0].visible, "changement d'équipe : le brouillard suit le joueur contrôlé")
 	fog.free()
 	_clear_squads()
+
+
+# --- Cartes et mana (Prototype 5) -------------------------------------------------------
+
+func _cards(e: EconomySystem = null, seed: int = 1) -> CardSystem:
+	var cs := CardSystem.new()
+	root.add_child(cs)
+	cs.setup(e, seed)
+	return cs
+
+
+## Main contrôlée pour les tests : `ids` en main, `deck_ids` dans le deck (dessus d'abord).
+func _set_hand(p: PlayerCards, ids: Array, deck_ids: Array) -> void:
+	p.hand.clear()
+	p.deck.clear()
+	for id in ids:
+		p.hand.append(CardDatabase.get_card(id))
+	for id in deck_ids:
+		p.deck.append(CardDatabase.get_card(id))
+
+
+func _test_deck_composition() -> void:
+	var cs := _cards()
+	var p := cs.player(0)
+	var all := p.deck + p.hand
+	check(all.size() == 20, "deck de 20 cartes (%d)" % all.size())
+	var count := func(cat): return all.filter(func(c): return c.category == cat).size()
+	check(count.call(CardData.Category.BONUS) == 10 and count.call(CardData.Category.MALUS) == 5
+			and count.call(CardData.Category.NEUTRAL) == 5, "10 bonus, 5 malus, 5 neutres")
+	check(p.hand.size() == 3 and p.hand_limit == 3, "main initiale de 3 cartes, limite 3")
+	var n0 := (cs.player(0).deck + cs.player(0).hand).filter(func(c): return c.category == CardData.Category.NEUTRAL).map(func(c): return c.id)
+	var n1 := (cs.player(1).deck + cs.player(1).hand).filter(func(c): return c.category == CardData.Category.NEUTRAL).map(func(c): return c.id)
+	n0.sort()
+	n1.sort()
+	check(n0 == n1, "les deux joueurs ont les mêmes cartes neutres")
+	cs.free()
+
+
+func _test_play_card_cycle() -> void:
+	var e := _new_economy()
+	var cs := _cards(e)
+	var p := cs.player(0)
+	_set_hand(p, [&"royal_treasure", &"mana_surge", &"malus_placeholder"], [&"new_draw", &"destruction"])
+	p.mana = 2.0
+	check(not p.can_play(0) and p.play_error(0).begins_with("Mana insuffisant"), "mana insuffisant : carte injouable")
+	p.mana = 5.0
+	var gold := e.economy(0).get_amount(&"gold")
+	check(p.play(0), "Trésor royal joué")
+	check(e.economy(0).get_amount(&"gold") == gold + 200, "effet : +200 Gd immédiatement")
+	check(is_equal_approx(p.mana, 2.0), "mana payé (3)")
+	check(p.deck.back().id == &"royal_treasure", "la carte retourne sous le deck")
+	check(p.hand.size() == 3 and p.hand.back().id == &"new_draw", "la main est complétée par la pioche")
+	# Afflux de mana : +50 % de régénération pendant 30 tours.
+	var regen := p.mana_regen()
+	p.play(0)
+	check(is_equal_approx(p.mana_regen(), regen * 1.5), "Afflux de mana : régénération +50 %")
+	for i in 30:
+		p.on_turn()
+	check(is_equal_approx(p.mana_regen(), regen), "bonus de mana terminé après 30 tours")
+	cs.free()
+	_clear_economy(e)
+
+
+func _test_malus_occupies_hand() -> void:
+	var cs := _cards()
+	var p := cs.player(0)
+	_set_hand(p, [&"royal_treasure", &"malus_placeholder", &"malus_placeholder"], [&"mana_surge"])
+	check(p.usable_count() == 1, "1 normale + 2 malus : 1 carte exploitable (GDD §7.2)")
+	check(p.can_play(1), "un malus peut être activé")
+	p.play(1)
+	check(p.deck.back().id == &"malus_placeholder" and p.hand.size() == 3, "malus activé : sous le deck, puis pioche")
+	cs.free()
+
+
+func _test_neutral_cards() -> void:
+	var cs := _cards()
+	var p := cs.player(0)
+	p.mana = 10.0
+	# Extension de main : limite +1, puis la main se complète.
+	_set_hand(p, [&"hand_extension", &"royal_treasure", &"mana_surge"], [&"new_draw", &"destruction", &"royal_treasure"])
+	p.play(0)
+	check(p.hand_limit == 4 and p.hand.size() == 4, "Extension de main : limite 4, main complétée")
+	check(not p.deck.any(func(c): return c.id == &"hand_extension"), "Extension de main : usage unique")
+	# Nouvelle pioche : une carte de plus, au-delà de la limite.
+	p.hand_limit = 3
+	_set_hand(p, [&"new_draw", &"royal_treasure", &"mana_surge"], [&"destruction", &"royal_treasure"])
+	p.play(0)
+	check(p.hand.size() == 3, "Nouvelle pioche : la carte jouée est remplacée et une carte de plus est piochée (%d)" % p.hand.size())
+	# Bannissement : choisir un malus, il disparaît définitivement.
+	_set_hand(p, [&"banishment", &"royal_treasure", &"malus_placeholder"], [&"mana_surge", &"new_draw"])
+	check(p.play(0) and p.pending != null, "Bannissement : attend une carte cible")
+	check(not p.choose_target(0), "Bannissement : une carte non malus est refusée")
+	check(p.choose_target(1), "Bannissement : malus choisi")
+	check(p.banished.size() == 1 and not (p.deck + p.hand).any(func(c): return c.id == &"malus_placeholder"),
+			"le malus est retiré définitivement du deck")
+	# Destruction : sans cible possible, injouable.
+	_set_hand(p, [&"destruction"], [])
+	check(not p.can_play(0), "Destruction : injouable sans autre carte en main")
+	# Annulation : mana rendu, carte en main.
+	_set_hand(p, [&"destruction", &"royal_treasure"], [])
+	var mana := p.mana
+	p.play(0)
+	p.cancel_pending()
+	check(p.hand.size() == 2 and is_equal_approx(p.mana, mana), "annulation : carte et mana rendus")
+	cs.free()
+
+
+func _test_field_cards_and_mana() -> void:
+	var cs := _cards()
+	var p := cs.player(0)
+	p.mana = 9.0
+	_set_hand(p, [&"royal_treasure", &"mana_surge", &"new_draw"], [&"destruction"])
+	var blessing := p.add_field_card(CardDatabase.get_card(&"royal_treasure"))
+	check(p.hand.size() == 4 and p.field_cards.size() == 1, "carte du terrain : ajoutée directement à la main")
+	p.play(p.hand.find(blessing))
+	check(p.field_cards.is_empty() and not p.deck.any(func(c): return c.id == &"royal_treasure"),
+			"carte du terrain : jamais ajoutée au deck après usage")
+	p.mana = 0.0
+	p.regen_boosts.clear()
+	for i in 4:
+		p.on_turn()
+	check(is_equal_approx(p.mana, GameConfig.MANA_REGEN_PER_TURN * 4), "le mana se régénère seul à chaque tour")
+	p.mana = GameConfig.MANA_MAX
+	p.on_turn()
+	check(is_equal_approx(p.mana, GameConfig.MANA_MAX), "le mana est plafonné")
+	check(is_equal_approx(cs.player(1).mana_regen(), cs.player(0).mana_regen()), "même régénération pour les deux joueurs")
+	cs.free()

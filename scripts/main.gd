@@ -11,6 +11,7 @@ const TEST_ARMY: Array[StringName] = [&"warrior", &"warrior", &"archer", &"caval
 @onready var hud: Hud = $HUD
 var economy: EconomySystem
 var fog: FogOfWar
+var cards: CardSystem
 
 
 func _ready() -> void:
@@ -25,6 +26,10 @@ func _ready() -> void:
 		var mine := MineSite.new()
 		map.add_child(mine)
 		mine.setup(map, c, c == Vector2i(map.width / 2, map.height / 2))
+	cards = CardSystem.new()
+	cards.name = "Cards"
+	add_child(cards)
+	cards.setup(economy, GameConfig.MAP_SEED)
 	fog = FogOfWar.new()
 	fog.name = "FogOfWar"
 	add_child(fog)
@@ -33,6 +38,7 @@ func _ready() -> void:
 	fx.name = "Effects"
 	add_child(fx)
 	hud.setup(map, camera, economy)
+	hud.set_card_system(cards)
 	hud.build_requested.connect(selection.start_build)
 	hud.recruit_requested.connect(_on_recruit_requested)
 	selection.building_selected.connect(hud.on_building_selected)
@@ -119,7 +125,11 @@ func _on_hud_command(cmd: StringName) -> void:
 		&"switch_team": selection.toggle_team()
 		&"move": selection.start_order_mode(SelectionController.OrderMode.MOVE)
 		&"attack": selection.start_order_mode(SelectionController.OrderMode.ATTACK)
-		&"cancel": selection.cancel()
+		&"cancel":
+			if cards.player(selection.controlled_team).pending:
+				cards.player(selection.controlled_team).cancel_pending()
+			else:
+				selection.cancel()
 		&"center": _center_on_selection()
 
 

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/card_data.gd" id="1_card"]
+[ext_resource type="Texture2D" path="res://assets/sprites/glyphs/sparkle.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"mana_surge"
+display_name = "Afflux de mana"
+category = 0
+mana_cost = 2
+effect = 2
+params = { "multiplier": 1.5, "turns": 30 }
+single_use = false
+description = "Régénération de mana +50 % pendant 30 tours."
+icon = ExtResource("2_icon")
+design_notes = "Exemple du GDD §4.2 / §7.1. Durée 30 tours et coût : [PROVISOIRE]."
