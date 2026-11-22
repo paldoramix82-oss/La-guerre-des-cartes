@@ -11,12 +11,10 @@ extends RefCounted
 ## Taille d'une case en pixels (purement visuel ; un individu par case, sprites 24 px).
 const TILE_SIZE: int = 32
 
-## [PROVISOIRE] Conversion "tour" -> secondes (GDD §1.2 : les valeurs en tours
-## doivent être converties en secondes). Un déplacement de 1 = 1 case par tour.
-const SECONDS_PER_TURN: float = 1.0
-
-## [PROVISOIRE] Nombre de tours entre deux attaques d'une escouade.
-const ATTACK_INTERVAL_TURNS: float = 1.0
+## Durée d'un tour en secondes (décision de l'auteur : 20 s « pour le moment »).
+## Production, construction, recrutement, consommation et mana sont exprimés en tours.
+## Le combat (intervalles d'attaque, brûlure) et les déplacements sont en secondes.
+const SECONDS_PER_TURN: float = 20.0
 
 ## Dimensions de la carte, en cases. L'auteur veut une carte immense (parties
 ## d'une trentaine de minutes). Nombres impairs : une case exacte au centre.
@@ -74,10 +72,6 @@ const MUSIC_TITLE := "res://assets/music/campement.ogg"
 const MUSIC_BATTLE := "res://assets/music/chevaliers_de_pik.ogg"
 
 
-static func seconds_per_attack() -> float:
-	return SECONDS_PER_TURN * ATTACK_INTERVAL_TURNS
-
-
-## Convertit une vitesse en "cases par tour" (GDD) en pixels par seconde.
-static func move_speed_px(cases_per_turn: float) -> float:
-	return cases_per_turn * TILE_SIZE / SECONDS_PER_TURN
+## Convertit une vitesse en cases par seconde en pixels par seconde.
+static func move_speed_px(cases_per_second: float) -> float:
+	return cases_per_second * TILE_SIZE

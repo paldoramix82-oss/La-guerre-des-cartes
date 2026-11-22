@@ -18,7 +18,11 @@ var height: int = GameConfig.MAP_HEIGHT
 ## Largeur (cases) de chaque royaume depuis son bord.
 var kingdom_depth: int = GameConfig.KINGDOM_DEPTH
 var tiles := PackedInt32Array()
+## Navigation : `astar` = terrain + objets + cases occupées par des individus
+## (contournement des cases occupées, décision de l'auteur) ;
+## `astar_static` = terrain + objets seulement (secours si tout est bloqué).
 var astar := AStarGrid2D.new()
+var astar_static := AStarGrid2D.new()
 ## Éléments placés par le générateur : &"bases" [Vector2i x2], &"mines", &"camps",
 ## &"lairs" {&"dragon", &"witch"}, &"deposits" [[id, Vector2i], ...].
 var features: Dictionary = {}
@@ -89,14 +93,14 @@ func _set_tile(cell: Vector2i, terrain: int) -> void:
 
 
 func _rebuild_navigation() -> void:
-	astar.region = Rect2i(0, 0, width, height)
-	astar.cell_size = Vector2(GameConfig.TILE_SIZE, GameConfig.TILE_SIZE)
-	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	astar.update()
+	for a in [astar, astar_static]:
+		a.region = Rect2i(0, 0, width, height)
+		a.cell_size = Vector2(GameConfig.TILE_SIZE, GameConfig.TILE_SIZE)
+		a.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+		a.update()
 	for y in height:
 		for x in width:
-			var cell := Vector2i(x, y)
-			astar.set_point_solid(cell, get_terrain(cell) in BLOCKING_TERRAIN)
+			_update_solid(Vector2i(x, y))
 
 
 # --- Requêtes ---------------------------------------------------------------
@@ -120,13 +124,25 @@ var _objects: Dictionary = {}
 
 func add_object(cell: Vector2i, obj: Object) -> void:
 	_objects[cell] = obj
-	astar.set_point_solid(cell, true)
+	_update_solid(cell)
 
 
 func remove_object(cell: Vector2i, obj: Object) -> void:
 	if _objects.get(cell) == obj:
 		_objects.erase(cell)
-		astar.set_point_solid(cell, get_terrain(cell) in BLOCKING_TERRAIN)
+		_update_solid(cell)
+
+
+func _static_blocked(cell: Vector2i) -> bool:
+	return get_terrain(cell) in BLOCKING_TERRAIN or _objects.has(cell)
+
+
+func _update_solid(cell: Vector2i) -> void:
+	if not is_inside(cell) or astar.region.size == Vector2i.ZERO:
+		return
+	var blocked := _static_blocked(cell)
+	astar_static.set_point_solid(cell, blocked)
+	astar.set_point_solid(cell, blocked or _occupants.has(cell))
 
 
 func object_at(cell: Vector2i) -> Object:
@@ -187,13 +203,22 @@ func nearest_walkable(cell: Vector2i, max_radius: int = 10) -> Vector2i:
 
 
 ## Chemin de cases de `from` à `to` (exclut la case de départ).
+## Les cases occupées par d'autres individus sont contournées ; si elles bloquent
+## tout passage, le chemin les traverse (secours).
 func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	from = nearest_walkable(from)
 	to = nearest_walkable(to)
 	if from == to:
 		return result
+	# Départ et arrivée ne doivent pas bloquer leur propre chemin.
+	astar.set_point_solid(from, false)
+	astar.set_point_solid(to, false)
 	var ids := astar.get_id_path(from, to)
+	_update_solid(from)
+	_update_solid(to)
+	if ids.is_empty():
+		ids = astar_static.get_id_path(from, to)
 	for i in range(1, ids.size()):
 		result.append(ids[i])
 	return result
@@ -209,17 +234,20 @@ var _occupants: Dictionary = {}
 
 func reserve(cell: Vector2i, who: Object) -> void:
 	_occupants[cell] = who
+	_update_solid(cell)
 
 
 func release(cell: Vector2i, who: Object) -> void:
 	if _occupants.get(cell) == who:
 		_occupants.erase(cell)
+		_update_solid(cell)
 
 
 func occupant(cell: Vector2i) -> Object:
 	var o = _occupants.get(cell)
 	if o != null and not is_instance_valid(o):
 		_occupants.erase(cell)
+		_update_solid(cell)
 		return null
 	return o
 

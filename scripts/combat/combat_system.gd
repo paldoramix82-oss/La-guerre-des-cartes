@@ -7,15 +7,15 @@ extends RefCounted
 ##   individus ennemis des cases de sa zone (Cavalier : cercle, Mage : ligne).
 ##   4 guerriers à portée = 4 coups de 10 = 40 dégâts.
 ## - Un individu à 0 PV est retiré ; l'escouade disparaît quand elle n'a plus d'individus.
-## - Brûlure (Mage) : chaque individu touché subit ensuite `burn_damage` dégâts
-##   par tour pendant `burn_turns` tours.
+## - Chaque individu attaque toutes les `attack_interval` secondes.
+## - Brûlure (Mage) : chaque individu touché subit ensuite `burn_damage` dégâts par
+##   seconde pendant `burn_seconds` s ; relancée par le même Mage, cumulée entre Mages.
 ## - Soin (Soigneur) : chaque individu allié des cases de la zone récupère
 ##   `heal_amount` PV, sans dépasser ses PV max. Pas de résurrection (GDD §12.4).
 ##
 ## Choix [PROVISOIRES] (non précisés par le GDD, cf. docs/PROTOTYPE_1.md) :
 ## - Distance sur la grille = distance de Chebyshev (les diagonales comptent 1).
 ## - Chaque individu vise l'individu valide le plus proche de l'escouade ciblée.
-## - Une nouvelle brûlure du même type d'unité remplace la précédente (pas de cumul).
 
 
 static func grid_distance(a: Vector2i, b: Vector2i) -> int:
@@ -84,7 +84,7 @@ static func perform_action(actor: Individual, target: Individual) -> Array[Indiv
 		if d.action == UnitData.ActionType.HEAL:
 			o.heal(d.heal_amount)
 		else:
-			if d.burn_turns > 0 and d.burn_damage > 0:
-				o.apply_burn(d.id, d.burn_damage, d.burn_turns)
+			if d.burn_seconds > 0.0 and d.burn_damage > 0:
+				o.apply_burn(actor.get_instance_id(), d.burn_damage, d.burn_seconds)
 			o.take_damage(d.damage)
 	return touched

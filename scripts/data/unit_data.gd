@@ -34,10 +34,13 @@ enum AttackPattern {
 @export var action: ActionType = ActionType.ATTACK
 ## PV rendus par CHAQUE individu à chaque soin (action HEAL).
 @export var heal_amount: int = 0
-## Brûlure appliquée aux escouades touchées : `burn_damage` dégâts par tour
-## pendant `burn_turns` tours (Mage : 2 dégâts pendant 2 tours).
+## Temps entre deux attaques (ou soins) d'un individu, en secondes.
+@export var attack_interval: float = 3.0
+## Brûlure appliquée aux individus touchés : `burn_damage` dégâts par seconde pendant
+## `burn_seconds` secondes (Mage : 2 PV/s pendant 4 s). Une nouvelle attaque du même
+## individu relance la durée ; deux Mages différents cumulent leurs brûlures.
 @export var burn_damage: int = 0
-@export var burn_turns: int = 0
+@export var burn_seconds: float = 0.0
 ## Portée en cases.
 @export var attack_range: int = 1
 @export var attack_pattern: AttackPattern = AttackPattern.SINGLE
@@ -59,7 +62,7 @@ func upkeep_for(alive: int) -> Dictionary:
 	return out
 
 @export_group("Déplacement")
-## Déplacement en cases par tour (converti en secondes via GameConfig).
+## Déplacement en cases par seconde. La vision vaut déplacement + 2 cases.
 @export var move_speed: float = 1.0
 
 @export_group("Capacités")

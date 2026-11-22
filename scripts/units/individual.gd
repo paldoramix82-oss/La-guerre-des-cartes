@@ -14,7 +14,7 @@ var path: Array[Vector2i] = []
 var reserved_cell := NO_CELL
 ## Individu visé (ennemi pour l'attaque, allié pour le soin).
 var target: Individual = null
-## Brûlures actives, par type d'unité source : {damage, turns_left, timer}.
+## Brûlures actives, par individu source (id) : {damage, seconds_left, timer}.
 var burns: Dictionary = {}
 
 var _cooldown := 0.0
@@ -135,9 +135,14 @@ func heal(amount: int) -> void:
 		Effects.floating_text(self, position, "+%d" % healed, Color(0.5, 1, 0.5))
 
 
-## Applique (ou renouvelle) une brûlure : `damage` dégâts par tour pendant `turns` tours.
-func apply_burn(source: StringName, damage: int, turns: int) -> void:
-	burns[source] = {"damage": damage, "turns_left": turns, "timer": GameConfig.SECONDS_PER_TURN}
+## Applique une brûlure : `damage` dégâts par seconde pendant `seconds` secondes.
+## Une nouvelle brûlure de la même source relance la durée ; des sources différentes
+## (deux Mages) se cumulent (décision de l'auteur).
+func apply_burn(source: int, damage: int, seconds: float) -> void:
+	if burns.has(source):
+		burns[source].seconds_left = seconds
+	else:
+		burns[source] = {"damage": damage, "seconds_left": seconds, "timer": 1.0}
 
 
 func _die() -> void:
@@ -201,7 +206,7 @@ func update_action(delta: float, target_squad, chase: bool) -> bool:
 			var t := target
 			var touched := CombatSystem.perform_action(self, t)
 			_play_action_fx(t, touched)
-			_cooldown = GameConfig.seconds_per_attack()
+			_cooldown = data.attack_interval
 		return true
 	if chase:
 		_repath_timer -= delta
@@ -311,15 +316,14 @@ func _process_burns(delta: float) -> void:
 	for source in burns.keys():
 		var b: Dictionary = burns[source]
 		b.timer -= delta
-		if b.timer > 0.0:
-			continue
-		b.timer += GameConfig.SECONDS_PER_TURN
-		b.turns_left -= 1
-		if b.turns_left <= 0:
+		b.seconds_left -= delta
+		if b.timer <= 0.0:
+			b.timer += 1.0
+			take_damage(b.damage, Color(1, 0.6, 0.2))
+			if not is_alive():
+				return
+		if b.seconds_left <= 0.001:
 			burns.erase(source)
-		take_damage(b.damage, Color(1, 0.6, 0.2))
-		if not is_alive():
-			return
 
 
 func _follow_path(delta: float) -> void:

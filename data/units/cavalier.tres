@@ -10,7 +10,7 @@ display_name = "Cavalier"
 short_label = "C"
 squad_size = 2
 hp = 75
-damage = 15
+damage = 8
 attack_range = 1
 attack_pattern = 1
 zone_size = 1
@@ -26,3 +26,4 @@ design_notes = "Portée GDD : 'Cercle 1' -> toutes les cases adjacentes. Sprite 
 upkeep = {
 &"food": 3
 }
+attack_interval = 4.0

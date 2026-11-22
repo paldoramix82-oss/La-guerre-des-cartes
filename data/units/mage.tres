@@ -11,7 +11,7 @@ display_name = "Mage"
 short_label = "M"
 squad_size = 1
 hp = 25
-damage = 10
+damage = 6
 attack_range = 2
 attack_pattern = 2
 zone_size = 2
@@ -23,11 +23,12 @@ cost = {
 &"gold": 40
 }
 burn_damage = 2
-burn_turns = 2
-design_notes = "Zone 2 (2 cases H ou V). 10 dégâts + brûlure de 2 dégâts par tour pendant 2 tours."
+design_notes = "Zone 2 (2 cases H ou V), portée 2. 6 dégâts + brûlure 2 PV/s pendant 4 s ; la même brûlure est relancée par le même Mage, deux Mages cumulent."
 upkeep = {
 &"food": 1
 }
 projectile = ExtResource("3_proj")
 projectile_color = Color(1, 0.55, 0.2, 1)
 projectile_angle = 0.785398
+attack_interval = 3.0
+burn_seconds = 4.0

@@ -36,6 +36,7 @@ func _run_all() -> void:
 	_test_cavalier_circle_hits_multiple()
 	_test_mage_line_hits_two_individuals()
 	_test_pathfinding_avoids_water()
+	_test_path_avoids_occupied_cells()
 	_test_movement_speed()
 	_test_group_move_keeps_one_per_cell()
 	_test_attack_order_chases_and_kills()
@@ -156,15 +157,15 @@ func _list_files(path: String) -> Array[String]:
 
 
 func _test_unit_data_matches_gdd() -> void:
-	# GDD v0.2 §5.1 : effectif, PV, dégâts, portée, déplacement.
+	# Statistiques de l'auteur : effectif, PV, dégâts / attaque, portée, déplacement, intervalle (s).
 	var expected := {
-		&"warrior": [4, 50, 10, 1, 1.0],
-		&"archer": [2, 30, 20, 3, 2.0],
-		&"cavalier": [2, 75, 15, 1, 4.0],
-		&"mage": [1, 25, 10, 2, 1.0],
-		&"healer": [1, 35, 0, 3, 2.0],
-		&"miner": [1, 50, 5, 1, 4.0],
-		&"worker": [1, 30, 0, 1, 2.0],
+		&"warrior": [4, 50, 5, 1, 1.0, 2.5],
+		&"archer": [2, 30, 10, 3, 2.0, 3.0],
+		&"cavalier": [2, 75, 8, 1, 4.0, 4.0],
+		&"mage": [1, 25, 6, 2, 1.0, 3.0],
+		&"healer": [1, 35, 0, 3, 2.0, 3.0],
+		&"miner": [1, 50, 5, 1, 4.0, 3.0],
+		&"worker": [1, 30, 0, 1, 2.0, 3.0],
 	}
 	check(UnitDatabase.load_all().size() == expected.size(), "7 unités chargées")
 	for id in expected:
@@ -173,11 +174,14 @@ func _test_unit_data_matches_gdd() -> void:
 		if u == null:
 			continue
 		var e: Array = expected[id]
-		check([u.squad_size, u.hp, u.damage, u.attack_range, u.move_speed] == e,
-				"%s conforme au GDD (%s)" % [id, e])
+		check([u.squad_size, u.hp, u.damage, u.attack_range, u.move_speed, u.attack_interval] == e,
+				"%s conforme aux valeurs de l'auteur (%s)" % [id, e])
 		check(u.sprite != null, "%s a un sprite" % id)
 	var mage := UnitDatabase.get_unit(&"mage")
-	check(mage.burn_damage == 2 and mage.burn_turns == 2, "mage : brûlure 2 dégâts x 2 tours")
+	check(mage.burn_damage == 2 and is_equal_approx(mage.burn_seconds, 4.0), "mage : brûlure 2 PV/s pendant 4 s")
+	var dps := func(id): var u := UnitDatabase.get_unit(id); return u.squad_size * u.damage / u.attack_interval
+	check(is_equal_approx(dps.call(&"warrior"), 8.0) and is_equal_approx(dps.call(&"archer"), 20.0 / 3.0)
+			and is_equal_approx(dps.call(&"cavalier"), 4.0), "DPS d'escouade : guerrier 8, archer 6,67, cavalier 4")
 	var healer := UnitDatabase.get_unit(&"healer")
 	check(healer.action == UnitData.ActionType.HEAL and healer.heal_amount == 5, "soigneur : soin de 5")
 	check(UnitDatabase.get_unit(&"miner").can_mine, "mineur : peut miner")
@@ -204,7 +208,7 @@ func _test_squad_totals() -> void:
 	var before := target.hp
 	for m in w.members:
 		CombatSystem.perform_action(m, target)
-	check(before - target.hp == 40, "4 guerriers = 40 dégâts")
+	check(before - target.hp == 20, "4 guerriers = 20 dégâts collectifs")
 	_clear_squads()
 
 
@@ -212,9 +216,9 @@ func _test_individual_damage_and_removal() -> void:
 	var w := spawn(&"warrior", 0, Vector2i(5, 5), [Vector2i(5, 5)])
 	var a := spawn(&"archer", 1, Vector2i(6, 5), [Vector2i(6, 5), Vector2i(7, 5)])
 	var first: Individual = a.members[0]
-	for i in 3:
+	for i in 6:
 		CombatSystem.perform_action(w.members[0], first)
-	check(a.alive_count() == 1, "archer à 0 PV retiré de l'escouade")
+	check(a.alive_count() == 1, "archer à 0 PV retiré de l'escouade (6 coups de 5)")
 	check(a.total_hp() == 30, "l'autre archer est intact")
 	check(map.occupant(Vector2i(6, 5)) == null, "la case de l'archer mort est libérée")
 	_clear_squads()
@@ -225,8 +229,8 @@ func _test_squad_destruction() -> void:
 	var m := spawn(&"mage", 1, Vector2i(6, 5), [Vector2i(6, 5)])
 	var destroyed := [false]
 	m.destroyed.connect(func(_s): destroyed[0] = true)
-	for i in 3:
-		CombatSystem.perform_action(w.members[i], m.members[0])
+	for i in 5:
+		CombatSystem.perform_action(w.members[i % 4], m.members[0])
 	check(destroyed[0], "escouade détruite quand tous les individus meurent")
 	check(not m.is_alive(), "mage mort")
 	_clear_squads()
@@ -257,7 +261,7 @@ func _test_cavalier_circle_hits_multiple() -> void:
 	var ally := spawn(&"warrior", 0, Vector2i(10, 11), [Vector2i(10, 11)])
 	CombatSystem.perform_action(c.members[0], e.members[0])
 	var hps: Array = e.members.map(func(m): return m.hp)
-	check(hps == [35, 35, 50, 35], "cavalier : touche les 3 guerriers adjacents (15), pas celui à 3 cases (%s)" % [hps])
+	check(hps == [42, 42, 50, 42], "cavalier : 8 dégâts à chacun des 3 guerriers adjacents, pas à celui à 3 cases (%s)" % [hps])
 	check(ally.total_hp() == 50, "pas de tir allié")
 	_clear_squads()
 
@@ -267,7 +271,7 @@ func _test_mage_line_hits_two_individuals() -> void:
 	var e := spawn(&"warrior", 1, Vector2i(6, 5), [Vector2i(6, 5), Vector2i(7, 5), Vector2i(6, 6)])
 	CombatSystem.perform_action(m.members[0], e.members[0])
 	var hps: Array = e.members.map(func(x): return x.hp)
-	check(hps == [40, 40, 50], "mage : touche les 2 cases alignées, pas la diagonale (%s)" % [hps])
+	check(hps == [44, 44, 50], "mage : 6 dégâts sur les 2 cases alignées, pas la diagonale (%s)" % [hps])
 	check(e.members[0].is_burning() and e.members[1].is_burning() and not e.members[2].is_burning(),
 			"mage : seuls les individus touchés brûlent")
 	_clear_squads()
@@ -283,7 +287,7 @@ func _test_pathfinding_avoids_water() -> void:
 
 
 func _test_movement_speed() -> void:
-	# Cavalier : 4 cases/tour -> 4 cases en GameConfig.SECONDS_PER_TURN secondes.
+	# Cavalier : 4 cases par seconde.
 	var c := spawn(&"cavalier", 0, Vector2i(2, 2), [Vector2i(2, 2), Vector2i(2, 3)])
 	c.order_move_cells([Vector2i(6, 2), Vector2i(6, 3)])
 	var t := 0.0
@@ -291,7 +295,7 @@ func _test_movement_speed() -> void:
 		c.tick(0.05)
 		t += 0.05
 	check(c.cells() == [Vector2i(6, 2), Vector2i(6, 3)], "cavaliers arrivés chacun sur leur case")
-	check(absf(t - GameConfig.SECONDS_PER_TURN) < 0.11, "cavalier : 4 cases en 1 tour (%.2fs)" % t)
+	check(absf(t - 1.0) < 0.11, "cavalier : 4 cases en 1 seconde (%.2fs)" % t)
 	_clear_squads()
 
 
@@ -321,28 +325,37 @@ func _test_mage_burn() -> void:
 	var w := spawn(&"warrior", 1, Vector2i(10, 5), [Vector2i(6, 5)])
 	var ind: Individual = w.members[0]
 	CombatSystem.perform_action(m.members[0], ind)
-	check(ind.hp == 40, "mage : 10 dégâts immédiats")
+	check(ind.hp == 44, "mage : 6 dégâts immédiats")
 	check(ind.is_burning(), "mage : la cible brûle")
 	w.state = Squad.State.MOVING  # empêche la riposte automatique pendant le test
-	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
-	check(ind.hp == 38, "brûlure : 2 dégâts au 1er tour (%d)" % ind.hp)
-	_run_ticks([w], GameConfig.SECONDS_PER_TURN)
-	check(ind.hp == 36, "brûlure : 2 dégâts au 2e tour (%d)" % ind.hp)
-	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 2)
-	check(ind.hp == 36 and not ind.is_burning(), "brûlure terminée après 2 tours")
+	_run_ticks([w], 1.0)
+	check(ind.hp == 42, "brûlure : 2 PV après 1 s (%d)" % ind.hp)
+	_run_ticks([w], 3.0)
+	check(ind.hp == 36, "brûlure : 8 PV en 4 s, soit 14 dégâts au total (%d)" % ind.hp)
+	_run_ticks([w], 2.0)
+	check(ind.hp == 36 and not ind.is_burning(), "brûlure terminée après 4 s")
 	_clear_squads()
 
 
 func _test_burn_refresh() -> void:
 	var m := spawn(&"mage", 0, Vector2i(5, 5), [Vector2i(5, 5)])
+	var m2 := spawn(&"mage", 0, Vector2i(5, 7), [Vector2i(5, 7)])
 	var w := spawn(&"warrior", 1, Vector2i(10, 5), [Vector2i(6, 5)])
 	var ind: Individual = w.members[0]
 	w.state = Squad.State.MOVING
 	CombatSystem.perform_action(m.members[0], ind)
+	_run_ticks([w], 2.0)
 	CombatSystem.perform_action(m.members[0], ind)
-	check(ind.burns.size() == 1, "deux brûlures du mage ne se cumulent pas")
-	_run_ticks([w], GameConfig.SECONDS_PER_TURN * 3)
-	check(ind.hp == 50 - 20 - 4, "brûlure renouvelée : 2 tours seulement (%d)" % ind.hp)
+	check(ind.burns.size() == 1, "le même mage : la brûlure ne se cumule pas")
+	_run_ticks([w], 6.0)
+	# 6 + 2x2 (2 s) + 6 + 4x2 (durée relancée à 4 s) = 24
+	check(ind.hp == 50 - 24, "le même mage : la durée repart à 4 s (%d)" % ind.hp)
+	ind.hp = 50
+	CombatSystem.perform_action(m.members[0], ind)
+	CombatSystem.perform_action(m2.members[0], ind)
+	check(ind.burns.size() == 2, "deux mages : deux brûlures")
+	_run_ticks([w], 1.0)
+	check(ind.hp == 50 - 12 - 4, "deux mages : les brûlures s'additionnent (4 PV/s) (%d)" % ind.hp)
 	_clear_squads()
 
 
@@ -1012,3 +1025,15 @@ func _test_field_cards_and_mana() -> void:
 	check(is_equal_approx(p.mana, GameConfig.MANA_MAX), "le mana est plafonné")
 	check(is_equal_approx(cs.player(1).mana_regen(), cs.player(0).mana_regen()), "même régénération pour les deux joueurs")
 	cs.free()
+
+
+## Un individu contourne les cases occupées (décision de l'auteur).
+func _test_path_avoids_occupied_cells() -> void:
+	var wall := spawn(&"warrior", 1, Vector2i(6, 9), [Vector2i(6, 8), Vector2i(6, 9), Vector2i(6, 10)])
+	var path := map.find_path(Vector2i(4, 9), Vector2i(8, 9))
+	check(not path.is_empty() and not (Vector2i(6, 9) in path) and not (Vector2i(6, 8) in path),
+			"le chemin contourne les cases occupées")
+	check(map.find_path(Vector2i(4, 9), Vector2i(8, 9)).size() >= 4, "détour : chemin plus long que la ligne droite")
+	_clear_squads()
+	path = map.find_path(Vector2i(4, 9), Vector2i(8, 9))
+	check(Vector2i(6, 9) in path or Vector2i(6, 8) in path or Vector2i(6, 10) in path, "cases libérées : chemin direct")
