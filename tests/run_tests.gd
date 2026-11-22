@@ -56,6 +56,11 @@ func _run_all() -> void:
 	_test_income_per_turn()
 	_test_unit_upkeep_values()
 	_test_unfed_squad_stops()
+	_test_population_and_houses()
+	_test_barracks_capacity_and_cancel()
+	_test_rationing()
+	_test_workers_auto_build()
+	_test_workers_hide_in_hut()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -490,6 +495,7 @@ func _test_buildings_match_document() -> void:
 		&"siege_cannon": [75, {B: 2, M: 1, G: 120}, 2, {}, {}, {}],
 		&"worker_hut": [0, {B: 2}, 0, {}, {}, {F: 3}],
 		&"barracks": [0, {G: 100}, 4, {}, {}, {}],
+		&"house": [0, {G: 30, B: 5}, 1, {}, {}, {F: 2}],
 	}
 	check(BuildingDatabase.load_all().size() == expected.size(), "%d bâtiments chargés" % expected.size())
 	for id in expected:
@@ -505,7 +511,7 @@ func _test_buildings_match_document() -> void:
 		var b := BuildingDatabase.get_building(id)
 		check([b.damage, b.attack_range, b.min_range] == dmg[id], "%s : dégâts / portée conformes" % id)
 	check(BuildingDatabase.get_building(&"guard_hut").occupants == 2, "cabane garde : 2 gardes")
-	check(BuildingDatabase.get_building(&"worker_hut").workers == 2, "cabane ouvrier : 2 ouvriers")
+	check(BuildingDatabase.get_building(&"worker_hut").workers == 1, "cabane ouvrier : 1 ouvrier")
 	check(BuildingDatabase.get_building(&"barracks").recruit_per_turn[&"warrior"] == 4, "caserne : 4 guerriers / tour")
 
 
@@ -589,7 +595,7 @@ func _test_worker_hut() -> void:
 	e.workers_requested.connect(func(b, n): asked.append(n))
 	var hut := e.place_building(BuildingDatabase.get_building(&"worker_hut"), 0, Vector2i(3, 3))
 	check(hut.is_complete, "cabane ouvrier construite d'un coup")
-	check(asked == [2], "cabane ouvrier : 2 ouvriers")
+	check(asked == [1], "cabane ouvrier : 1 ouvrier")
 	check(e.economy(0).get_amount(&"wood") == 18, "cabane ouvrier : coûte 2 Bs")
 	e.process_turn()
 	check(e.economy(0).get_amount(&"food") == 47, "cabane ouvrier : consomme 3 Nourri par tour")
@@ -620,17 +626,19 @@ func _test_construction_speed() -> void:
 
 func _test_harvest_and_depletion() -> void:
 	var e := _new_economy()
-	var d := _deposit(&"metal_vein", Vector2i(6, 10), e)
-	d.remaining = 5
-	var d2 := _deposit(&"metal_vein", Vector2i(9, 10), e)
+	var d := _deposit(&"forest", Vector2i(6, 10), e)
+	var d2 := _deposit(&"forest", Vector2i(9, 10), e)
+	check(d.remaining == 20 and d.data.harvest_per_turn == 10, "arbre : 20 bois, 10 par tour")
+	check(DepositDatabase.get_deposit(&"berries").amount == 10, "baies : 10 nourriture")
+	check(DepositDatabase.get_deposit(&"metal_vein") == null, "plus de filons : l'or et le métal viennent des mines")
 	var w := _spawn_worker(0, Vector2i(3, 10))
 	check(w.order_work(d), "ouvrier : ordre de récolte")
-	var start := e.economy(0).get_amount(&"metal")
+	var start := e.economy(0).get_amount(&"wood")
 	_run_world(e, [w], 2.0 + GameConfig.SECONDS_PER_TURN + 0.1)  # trajet + 1 tour
-	check(e.economy(0).get_amount(&"metal") >= start + 2, "récolte sur place : +2 métal par tour")
-	_run_world(e, [w], GameConfig.SECONDS_PER_TURN * 3)
-	check(not is_instance_valid(d), "gisement épuisé : il disparaît")
-	check(w.state == Squad.State.WORKING and w.work_target == d2, "l'ouvrier passe au filon voisin")
+	check(e.economy(0).get_amount(&"wood") == start + 10, "récolte sur place : +10 bois par tour")
+	_run_world(e, [w], GameConfig.SECONDS_PER_TURN + 0.1)
+	check(not is_instance_valid(d), "arbre épuisé après 2 tours : il disparaît")
+	check(w.state == Squad.State.WORKING and w.work_target == d2, "l'ouvrier passe à l'arbre voisin")
 	check(not spawn(&"warrior", 0, Vector2i(3, 14)).order_work(d2), "seuls les ouvriers récoltent")
 	_clear_economy(e)
 
@@ -739,9 +747,9 @@ func _test_unfed_squad_stops() -> void:
 	var e := _new_economy()
 	var econ := e.economy(0)
 	var w := spawn(&"warrior", 0, Vector2i(3, 20))
-	econ.amounts[&"food"] = 20
+	econ.amounts[&"food"] = 50
 	e.process_turn()
-	check(econ.get_amount(&"food") == 12 and w.is_fed(), "4 guerriers : -8 Nourri par tour")
+	check(econ.get_amount(&"food") == 42 and w.is_fed(), "4 guerriers : -8 Nourri par tour")
 	econ.amounts[&"food"] = 5
 	e.process_turn()
 	check(not w.is_fed() and econ.get_amount(&"food") == 5, "nourriture insuffisante : l'escouade n'est pas nourrie")
@@ -1037,3 +1045,99 @@ func _test_path_avoids_occupied_cells() -> void:
 	_clear_squads()
 	path = map.find_path(Vector2i(4, 9), Vector2i(8, 9))
 	check(Vector2i(6, 9) in path or Vector2i(6, 8) in path or Vector2i(6, 10) in path, "cases libérées : chemin direct")
+
+
+# --- Habitants, Caserne, rationnement ------------------------------------------------
+
+func _test_population_and_houses() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	check(econ.inhabitants == 50, "50 habitants au départ")
+	e.place_building(BuildingDatabase.get_building(&"worker_hut"), 0, Vector2i(3, 3))
+	check(econ.inhabitants == 49, "une cabane d'ouvrier prend 1 habitant")
+	var house := e.place_building(BuildingDatabase.get_building(&"house"), 0, Vector2i(3, 6))
+	check(econ.inhabitants == 49, "maison en chantier : pas encore d'habitants")
+	house._complete()
+	check(econ.inhabitants == 54, "maison terminée : +5 habitants")
+	econ.amounts[&"food"] = 50
+	e.process_turn()
+	check(econ.get_amount(&"food") == 50 - 3 - 2, "maison : 2 Nourri / tour (+ cabane 3)")
+	var b := _barracks(e, Vector2i(5, 25))
+	econ.amounts[&"food"] = 80
+	e.recruit(UnitDatabase.get_unit(&"warrior"), 0)
+	check(econ.inhabitants == 50, "4 guerriers recrutés : 4 habitants en moins")
+	econ.inhabitants = 3
+	check(e.recruit_error(UnitDatabase.get_unit(&"warrior"), 0, b).begins_with("Pas assez d'habitants"), "recrutement impossible sans habitants")
+	econ.inhabitants = 0
+	check(e.placement_error(BuildingDatabase.get_building(&"worker_hut"), 0, Vector2i(8, 8)) == "Pas assez d'habitants.",
+			"cabane d'ouvrier impossible sans habitant")
+	_clear_economy(e)
+
+
+func _test_barracks_capacity_and_cancel() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	econ.amounts[&"gold"] = 2000
+	econ.amounts[&"food"] = 100
+	var b := _barracks(e, Vector2i(5, 25))
+	var warrior := UnitDatabase.get_unit(&"warrior")
+	for i in 6:
+		e.recruit(warrior, 0, b)
+	check(b.queued_individuals() == 24, "6 escouades de guerriers : 24 individus en file")
+	check(e.recruit_error(warrior, 0, b).begins_with("Caserne pleine"), "Caserne : 25 individus au plus")
+	check(e.recruit_error(UnitDatabase.get_unit(&"mage"), 0, b) == "", "un mage (1 individu) rentre encore")
+	var gold := econ.get_amount(&"gold")
+	var people := econ.inhabitants
+	check(e.cancel_recruit(b) == warrior and b.queue.size() == 5, "annulation du dernier recrutement")
+	check(econ.get_amount(&"gold") == gold + 50 and econ.inhabitants == people + 4, "annulation remboursée (or, nourriture, habitants)")
+	_clear_economy(e)
+
+
+func _test_rationing() -> void:
+	var e := _new_economy()
+	var econ := e.economy(0)
+	var a := spawn(&"archer", 0, Vector2i(3, 20))
+	var w := spawn(&"warrior", 0, Vector2i(3, 24))
+	econ.amounts[&"food"] = 15  # sous 20 % de 100 : rationnement
+	check(e.is_rationing(0), "nourriture sous 20 % : rationnement")
+	e.process_turn()
+	check(not a.is_fed() and not w.is_fed(), "rationnement : personne n'est servi sans choix du joueur")
+	w.ration_priority = true
+	e.process_turn()
+	check(w.is_fed() and not a.is_fed() and econ.get_amount(&"food") == 7, "« Nourrir » : seule l'escouade choisie est servie")
+	econ.amounts[&"food"] = 60
+	e.process_turn()
+	check(w.is_fed() and a.is_fed(), "hors rationnement : tout le monde est servi")
+	_clear_economy(e)
+
+
+func _test_workers_auto_build() -> void:
+	var e := _new_economy()
+	var w := _spawn_worker(0, Vector2i(4, 30))
+	var site := e.place_building(BuildingDatabase.get_building(&"mill"), 0, Vector2i(8, 30))
+	_run_world(e, [w], 0.5)
+	check(w.state == Squad.State.WORKING and w.work_target == site, "ouvrier libre : il part construire tout seul")
+	w.order_move(Vector2i(4, 33))
+	check(w.state == Squad.State.MOVING, "on peut le réaffecter à autre chose")
+	_clear_economy(e)
+
+
+func _test_workers_hide_in_hut() -> void:
+	var e := _new_economy()
+	var hut := e.place_building(BuildingDatabase.get_building(&"worker_hut"), 0, Vector2i(4, 12))
+	var tree := _deposit(&"forest", Vector2i(9, 12), e)
+	var w := _spawn_worker(0, Vector2i(8, 12), hut)
+	w.order_work(tree)
+	_run_world(e, [w], 0.5)
+	var enemy := spawn(&"warrior", 1, Vector2i(11, 12), [Vector2i(11, 12)])
+	enemy.state = Squad.State.MOVING  # passif
+	_run_world(e, [w], 3.0)
+	check(w.sheltered and not w.members[0].visible, "combat proche : l'ouvrier se cache dans sa cabane")
+	var a := spawn(&"archer", 1, Vector2i(6, 13), [Vector2i(6, 13)])
+	a.order_target(w)
+	check(not a.members[0]._is_valid_target(w.members[0]), "un ouvrier caché ne peut pas être attaqué")
+	enemy.free()
+	a.free()
+	_run_world(e, [w], Squad.SAFE_DELAY + 1.0)
+	check(not w.sheltered and w.work_target == tree, "plus d'ennemi : il ressort et reprend sa récolte")
+	_clear_economy(e)

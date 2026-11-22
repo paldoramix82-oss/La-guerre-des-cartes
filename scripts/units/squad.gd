@@ -36,6 +36,20 @@ var _last_deposit_type: StringName = &""
 var home: Building = null
 ## Consommation de nourriture payée ce tour-ci (voir EconomySystem).
 var fed := true
+## Choisie avec le bouton « Nourrir » : servie en priorité, et seule servie en rationnement.
+var ration_priority := false
+
+# --- Ouvriers : abri pendant les combats (décision de l'auteur) ---
+## Intervalle de vérification de la menace (s).
+const THREAT_CHECK_INTERVAL := 0.3
+## [PROVISOIRE] Secondes sans ennemi en vue avant de ressortir de la cabane.
+const SAFE_DELAY := 5.0
+## Caché dans sa cabane : invisible, ne peut pas être ciblé.
+var sheltered := false
+var _fleeing := false
+var _resume_target: MapObject = null
+var _threat_timer := 0.0
+var _safe_time := 0.0
 
 var selected := false:
 	set(value):
@@ -210,6 +224,13 @@ func tick(delta: float) -> void:
 			m.tick(delta)
 	if not is_alive() or not is_fed():
 		return
+	if data.is_worker:
+		_threat_timer -= delta
+		if _threat_timer <= 0.0:
+			_threat_timer = THREAT_CHECK_INTERVAL
+			_update_shelter(THREAT_CHECK_INTERVAL)
+		if sheltered:
+			return
 	match state:
 		State.IDLE:
 			_acquire_timer -= delta
@@ -272,11 +293,15 @@ func _work_next_deposit() -> void:
 func _auto_acquire() -> void:
 	if not is_inside_tree():
 		return
+	if data.is_worker:
+		if not _fleeing:
+			_auto_build()
+		return
 	var best: Squad = null
 	var best_d := 1 << 30
 	for other in get_tree().get_nodes_in_group(Individual.GROUP):
 		var o := other as Individual
-		if o == null or not o.is_alive() or not CombatSystem.can_target(self, o.squad):
+		if o == null or not o.is_alive() or o.squad.sheltered or not CombatSystem.can_target(self, o.squad):
 			continue
 		if data.action == UnitData.ActionType.HEAL and not o.is_wounded():
 			continue
@@ -288,6 +313,82 @@ func _auto_acquire() -> void:
 	if best:
 		order_target(best)
 		_auto_target = true
+
+
+# --- Ouvriers -------------------------------------------------------------------------
+
+## Ouvrier libre : part de lui-même vers le chantier de son camp le plus proche.
+func _auto_build() -> void:
+	var best: Building = null
+	var best_d := INF
+	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
+		if o is Building and o.can_be_worked_by(self):
+			var d := center().distance_squared_to(o.position)
+			if d < best_d:
+				best = o
+				best_d = d
+	if best:
+		order_work(best)
+
+
+## Un individu hostile (autre camp, monstre) est-il à portée de vue de l'ouvrier ?
+func _threat_near() -> bool:
+	var vision := int(data.move_speed) + GameConfig.VISION_BONUS
+	for n in get_tree().get_nodes_in_group(Individual.GROUP):
+		var o := n as Individual
+		if o == null or o.team == team or not o.is_alive() or o.squad.sheltered:
+			continue
+		for m in members:
+			if CombatSystem.grid_distance(m.get_cell(), o.get_cell()) <= vision:
+				return true
+	return false
+
+
+## Combat proche : l'ouvrier court se cacher dans sa cabane, puis ressort et reprend
+## son travail quand plus aucun ennemi n'est en vue depuis SAFE_DELAY secondes.
+func _update_shelter(dt: float) -> void:
+	var threat := _threat_near()
+	if sheltered:
+		_safe_time = 0.0 if threat else _safe_time + dt
+		if _safe_time >= SAFE_DELAY:
+			_leave_shelter()
+		return
+	if not is_instance_valid(home):
+		return
+	if threat and not _fleeing:
+		_fleeing = true
+		if is_instance_valid(work_target):
+			_resume_target = work_target
+		var cells := map.spread_cells(home.cell, 1, members)
+		if not cells.is_empty():
+			order_move_cells(cells)
+	# Une fois partie, la fuite va jusqu'à la cabane.
+	if _fleeing and members.all(func(m): return not m.is_moving() and CombatSystem.grid_distance(m.get_cell(), home.cell) <= 1):
+		_enter_shelter()
+
+
+func _enter_shelter() -> void:
+	sheltered = true
+	_fleeing = false
+	_safe_time = 0.0
+	for m in members:
+		m.path.clear()
+		m.visible = false
+
+
+func _leave_shelter() -> void:
+	sheltered = false
+	for m in members:
+		m.visible = true
+	_resume_work()
+
+
+func _resume_work() -> void:
+	var t := _resume_target
+	_resume_target = null
+	if is_instance_valid(t) and order_work(t):
+		return
+	order_stop()
 
 
 func on_member_died(m: Individual) -> void:

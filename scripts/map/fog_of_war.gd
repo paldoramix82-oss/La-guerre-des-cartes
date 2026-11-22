@@ -125,7 +125,7 @@ func _apply_visibility() -> void:
 	for n in get_tree().get_nodes_in_group(Individual.GROUP):
 		var m := n as Individual
 		if m:
-			m.visible = m.team == team or is_cell_visible(m.get_cell())
+			m.visible = (m.team == team or is_cell_visible(m.get_cell())) and not m.squad.sheltered
 	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
 		if o is Building and o.team != team:
 			if is_cell_visible(o.cell):

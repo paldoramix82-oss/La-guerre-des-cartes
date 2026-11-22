@@ -1,7 +1,7 @@
 class_name Deposit
 extends MapObject
-## Gisement neutre (forêt, baies, filon de métal, or). Les ouvriers adjacents
-## récoltent sur place `GameConfig.WORKER_HARVEST_PER_TURN` par tour chacun,
+## Gisement neutre (arbre, baies). Les ouvriers adjacents
+## récoltent sur place `data.harvest_per_turn` par tour chacun,
 ## versé directement au stock de leur joueur. Le gisement s'épuise puis disparaît.
 
 signal depleted(deposit: Deposit)
@@ -39,7 +39,7 @@ func work(worker: Individual, delta: float) -> bool:
 	var p: float = _progress.get(worker, 0.0) + delta
 	if p >= GameConfig.SECONDS_PER_TURN:
 		p -= GameConfig.SECONDS_PER_TURN
-		var amount := mini(GameConfig.WORKER_HARVEST_PER_TURN, remaining)
+		var amount := mini(data.harvest_per_turn, remaining)
 		remaining -= econ.add(data.resource, amount)
 		queue_redraw()
 		if remaining <= 0:

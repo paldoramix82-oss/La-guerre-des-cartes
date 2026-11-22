@@ -8,7 +8,8 @@ extends RefCounted
 ## - des lacs et des massifs rocheux ;
 ## - des clairières : mines (dont la mine centrale), camps de monstres, repaires du
 ##   Dragon et de la Sorcière (monstres : Prototype 4) ;
-## - des gisements dans les royaumes et la jungle.
+## - des gisements (arbres, baies) dans les royaumes et la jungle ; l'or et le
+##   métal viennent des mines.
 ## Seule la moitié gauche est générée ; la droite en est le reflet par rotation de
 ## 180°, pour que les deux joueurs aient exactement la même carte.
 ## Les chemins relient le départ de chaque joueur à tous les éléments : tout est accessible.
@@ -28,10 +29,8 @@ const FORD_OFFSETS := [14, 31]  ## gués de la rivière, de part et d'autre du c
 
 ## Gisements par moitié : [type, nombre dans le royaume, nombre dans la jungle].
 const DEPOSITS := [
-	[&"forest", 2, 14],
-	[&"berries", 1, 6],
-	[&"metal_vein", 1, 6],
-	[&"gold_vein", 1, 4],
+	[&"forest", 6, 26],
+	[&"berries", 2, 8],
 ]
 
 
@@ -237,7 +236,7 @@ func _place_deposits(base: Vector2i, avoid: Array) -> Array:
 				taken.append(c)
 		# Dans la jungle : de préférence en lisière de forêt (bois, baies) ou près des rochers (minerais).
 		for i in spec[2]:
-			var want := T.ROCK if id == &"metal_vein" or id == &"gold_vein" else T.FOREST
+			var want := T.FOREST
 			var c := _find_cell(func(): return Vector2i(rng.randi_range(map.kingdom_depth + 3, cx - 4), rng.randi_range(3, h - 4)),
 					func(cc): return _touches(cc, want) or rng.randf() < 0.15, taken + avoid)
 			if c != Vector2i(-1, -1):

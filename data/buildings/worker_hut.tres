@@ -8,14 +8,14 @@ script = ExtResource("1_building")
 id = &"worker_hut"
 display_name = "Cabane Ouvrier"
 category = 5
-workers = 2
+workers = 1
 cost = {
 &"wood": 2
 }
 upkeep = {
 &"food": 3
 }
-design_notes = "Pas de PV, construite d'un coup. Les 3 Nourri / tour sont l'entretien des 2 ouvriers."
+design_notes = "Pas de PV, construite d'un coup. 1 ouvrier (pris parmi les habitants), nourri par la cabane (3 Nourri / tour). 2 cabanes au départ."
 sprite = ExtResource("2_sprite")
 player_buildable = true
 destructible = false

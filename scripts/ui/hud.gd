@@ -38,6 +38,7 @@ var camera: Camera2D
 var _root: Control
 var _amount_labels: Dictionary = {}
 var _rate_labels: Dictionary = {}
+var _pop_label: Label
 var _mana_label: Label
 var _mana_rate: Label
 var _hand: HandPanel
@@ -103,10 +104,12 @@ func _build_top_bar() -> void:
 				CanvasItem.TEXTURE_FILTER_LINEAR if icon_path.begins_with("hud:") else CanvasItem.TEXTURE_FILTER_NEAREST
 		_amount_labels[r] = UiUtil.label(bar, "0", Vector2(x + 38, 13), 22)
 		_rate_labels[r] = UiUtil.label(bar, "", Vector2(x + 38, 35), 14, UiUtil.COLOR_GAIN)
-	# Mana (cristal bleu de la maquette), après le séparateur.
-	UiUtil.pixel_icon(bar, UiUtil.tex("icon_mana"), Rect2(682, 12, 36, 38)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_mana_label = UiUtil.label(bar, "0", Vector2(722, 13), 22, Color(0.7, 0.85, 1.0))
-	_mana_rate = UiUtil.label(bar, "", Vector2(722, 35), 14, Color(0.55, 0.75, 1.0))
+	# Mana (cristal bleu de la maquette) et habitants, après le séparateur.
+	UiUtil.pixel_icon(bar, UiUtil.tex("icon_mana"), Rect2(672, 12, 30, 36)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_mana_label = UiUtil.label(bar, "0", Vector2(702, 15), 18, Color(0.7, 0.85, 1.0))
+	_mana_rate = UiUtil.label(bar, "", Vector2(702, 35), 12, Color(0.55, 0.75, 1.0))
+	UiUtil.pixel_icon(bar, UiUtil.tex("icon_population"), Rect2(752, 15, 30, 25)).texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_pop_label = UiUtil.label(bar, "0", Vector2(785, 15), 18)
 	bar.get_child(bar.get_child_count() - 3).tooltip_text = "Mana : sert à jouer les cartes"
 
 
@@ -224,11 +227,19 @@ func _refresh_resources() -> void:
 		var rl: Label = _rate_labels[r]
 		rl.text = "" if rate == 0 else "(%+d)" % rate
 		rl.add_theme_color_override("font_color", UiUtil.COLOR_GAIN if rate > 0 else UiUtil.COLOR_LOSS)
+	var soldiers := 0
+	for n in get_tree().get_nodes_in_group(Individual.GROUP):
+		if n.team == _team and n.is_alive():
+			soldiers += 1
+	_pop_label.text = str(econ.inhabitants)
+	_pop_label.tooltip_text = "Habitants libres : %d — population totale : %d (dont %d ouvriers et soldats)" % [
+			econ.inhabitants, econ.inhabitants + soldiers, soldiers]
 	if card_system and not card_system.players.is_empty():
 		var p := card_system.player(_team)
-		_mana_label.text = "%d / %d" % [int(p.mana), int(GameConfig.MANA_MAX)]
-		_mana_rate.text = "(+%.2f)" % p.mana_regen()
-		_mana_label.tooltip_text = "Mana : %.1f / %d — régénération %.2f par tour" % [p.mana, int(GameConfig.MANA_MAX), p.mana_regen()]
+		_mana_label.text = "%d/%d" % [int(p.mana), int(GameConfig.MANA_MAX)]
+		_mana_rate.text = "(+%d)" % int(p.mana_regen())
+		_mana_label.tooltip_text = "Mana : %.1f / %d — régénération %.1f par tour — cristaux de mana : %d" % [
+				p.mana, int(GameConfig.MANA_MAX), p.mana_regen(), econ.get_amount(ResourceTypes.CRYSTAL)]
 		_hand.refresh()
 
 
@@ -272,6 +283,7 @@ static func _building_info(b: Building) -> String:
 	if not b.data.upkeep.is_empty():
 		lines.append("Consommation / tour : " + ResourceTypes.format(b.data.upkeep))
 	if not b.data.recruit_per_turn.is_empty():
+		lines.append("File : %d / %d individus" % [b.queued_individuals(), GameConfig.BARRACKS_CAPACITY])
 		if b.queue.is_empty():
 			lines.append("Aucun recrutement — onglet Recrutement pour recruter.")
 		else:
@@ -279,14 +291,19 @@ static func _building_info(b: Building) -> String:
 			lines.append("Recrutement : %s (%d %%)" % [names[0], int(b.recruit_ratio() * 100)])
 			if names.size() > 1:
 				lines.append("En file : " + ", ".join(names.slice(1)))
+			lines.append("⊘ : annuler le dernier recrutement (remboursé)")
 	return "\n".join(lines)
 
 
 static func _status(s: Squad) -> String:
 	var status: String = ["Repos", "Déplacement", "Soin" if s.data.action == UnitData.ActionType.HEAL else "Combat",
 			"Construction" if s.work_target is Building else "Récolte"][s.state]
-	if not s.is_fed():
+	if s.sheltered:
+		status = "Caché dans sa cabane"
+	elif not s.is_fed():
 		status = "À l'arrêt (sans nourriture)"
+	if s.ration_priority:
+		status += " · Nourrie en priorité"
 	if s.is_burning():
 		status += " · Brûlure"
 	return status

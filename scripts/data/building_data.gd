@@ -37,8 +37,10 @@ enum Category {
 @export var upkeep: Dictionary = {}
 ## Colonne « Cabane Garde » du document (sens à préciser).
 @export var guard_huts: int = 0
-## Ouvriers fournis (Cabane Ouvrier : 2).
+## Ouvriers fournis (Cabane Ouvrier : 1) ; chacun est pris parmi les habitants.
 @export var workers: int = 0
+## Habitants ajoutés au royaume une fois construit (Maison : 5).
+@export var inhabitants: int = 0
 ## Cadence de recrutement de la Caserne : {id d'unité: individus par tour}.
 @export var recruit_per_turn: Dictionary = {}
 

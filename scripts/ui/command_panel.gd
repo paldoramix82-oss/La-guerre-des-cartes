@@ -15,9 +15,9 @@ const COMMANDS := [
 	[&"", "Défendre — à définir"],
 	[&"stop", "Stop (Espace)"],
 	[&"attack", "Attaquer : cliquez ensuite sur un ennemi"],
+	[&"feed", "Nourrir : les escouades choisies sont servies en priorité (seules servies quand la nourriture passe sous 20 %)"],
 	[&"", "À définir"],
-	[&"", "À définir"],
-	[&"cancel", "Annuler / désélectionner (Échap)"],
+	[&"cancel", "Annuler / désélectionner (Échap) — Caserne choisie : annule le dernier recrutement (remboursé)"],
 	[&"select_all", "Choisir toutes vos escouades (Cmd + A)"],
 	[&"", "Point de ralliement — Prototype 3"],
 ]

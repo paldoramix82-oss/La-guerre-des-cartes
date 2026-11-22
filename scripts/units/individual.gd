@@ -262,7 +262,7 @@ func _pick_target(squad_ref, allow_far: bool) -> Individual:
 
 ## `m` n'est pas typé : il peut s'agir d'un individu mort et déjà libéré.
 func _is_valid_target(m) -> bool:
-	if not is_instance_valid(m) or not (m is Individual) or not m.is_alive():
+	if not is_instance_valid(m) or not (m is Individual) or not m.is_alive() or m.squad.sheltered:
 		return false
 	if data.action == UnitData.ActionType.HEAL:
 		return m.team == team and m.is_wounded()
@@ -380,6 +380,9 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 	else:
 		draw_circle(_anim_offset(), 7.0, data.color)
+	# Escouade nourrie en priorité (bouton « Nourrir ») : petite pastille verte.
+	if squad.ration_priority and squad.members.size() > 0 and squad.members[0] == self:
+		draw_circle(Vector2(half - 5, -half + 2), 3.5, Color(0.4, 0.95, 0.4))
 	# Barre de PV individuelle.
 	var bar := Rect2(Vector2(-half + 6, -half - 1), Vector2(GameConfig.TILE_SIZE - 12, 3))
 	draw_rect(bar.grow(1), Color(0, 0, 0, 0.75))

@@ -9,13 +9,13 @@ const LAYOUT := [
 	# Royaume
 	[&"forest", Vector2i(11, 6)], [&"forest", Vector2i(12, 7)],
 	[&"berries", Vector2i(11, 12)],
-	[&"metal_vein", Vector2i(12, 24)],
-	[&"gold_vein", Vector2i(11, 29)],
+	[&"forest", Vector2i(12, 24)],
+	[&"berries", Vector2i(11, 29)],
 	# Jungle
 	[&"forest", Vector2i(17, 9)], [&"forest", Vector2i(20, 15)], [&"forest", Vector2i(16, 22)],
 	[&"berries", Vector2i(18, 31)],
-	[&"metal_vein", Vector2i(22, 5)], [&"metal_vein", Vector2i(23, 27)],
-	[&"gold_vein", Vector2i(25, 13)],
+	[&"forest", Vector2i(22, 5)], [&"forest", Vector2i(23, 27)],
+	[&"berries", Vector2i(25, 13)],
 ]
 
 

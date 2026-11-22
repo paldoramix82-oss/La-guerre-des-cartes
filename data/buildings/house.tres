@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BuildingData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/building_data.gd" id="1_building"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/stall_green.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_building")
+id = &"house"
+display_name = "Maison"
+category = 5
+hp = 0
+cost = {
+&"gold": 30,
+&"wood": 5
+}
+build_turns = 1
+inhabitants = 5
+upkeep = {
+&"food": 2
+}
+sprite = ExtResource("2_sprite")
+player_buildable = true
+design_notes = "Maison de villageois : +5 habitants, consomme 2 Nourri / tour (valeurs de l'auteur). Coût (30 Gd, 5 Bs), 1 tour de construction et PV : [PROVISOIRE]."

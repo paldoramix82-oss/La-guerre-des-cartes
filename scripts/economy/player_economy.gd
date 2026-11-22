@@ -13,6 +13,8 @@ var extra_storage: Dictionary = {}
 ## Revenu net du dernier tour (récolte + production - entretien), hors dépenses.
 var last_income: Dictionary = {}
 var _income: Dictionary = {}
+## Habitants libres (pas encore ouvriers ni soldats).
+var inhabitants: int = GameConfig.START_POPULATION
 
 
 func _init(p_team: int = 0, start: Dictionary = GameConfig.STARTING_RESOURCES) -> void:
@@ -54,6 +56,20 @@ func add(r: StringName, amount: int) -> int:
 		_income[r] = _income.get(r, 0) + stored
 		changed.emit()
 	return stored
+
+
+## Prend `n` habitants libres (recrutement, ouvrier). Retourne false s'il n'y en a pas assez.
+func take_inhabitants(n: int) -> bool:
+	if inhabitants < n:
+		return false
+	inhabitants -= n
+	changed.emit()
+	return true
+
+
+func give_inhabitants(n: int) -> void:
+	inhabitants += n
+	changed.emit()
 
 
 ## Paie un entretien (compté dans le revenu net du tour). Retourne true si payé.

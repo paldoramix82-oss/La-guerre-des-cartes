@@ -82,6 +82,14 @@ func tick_recruitment(delta: float) -> void:
 	queue_redraw()
 
 
+## Individus en file de recrutement (capacité : GameConfig.BARRACKS_CAPACITY).
+func queued_individuals() -> int:
+	var n := 0
+	for u in queue:
+		n += u.squad_size
+	return n
+
+
 func recruit_ratio() -> float:
 	if queue.is_empty():
 		return 0.0

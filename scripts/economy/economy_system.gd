@@ -73,9 +73,23 @@ func _pay_squad_upkeep() -> void:
 	var squads := get_tree().get_nodes_in_group(Squad.GROUP).filter(
 			func(s): return is_instance_valid(s) and s is Squad and s.is_alive())
 	squads.sort_custom(func(a, b): return a.get_instance_id() < b.get_instance_id())
+	# Escouades choisies avec « Nourrir » d'abord. En rationnement (nourriture sous
+	# RATIONING_THRESHOLD de la capacité), seules elles sont servies.
+	squads.sort_custom(func(a, b): return int(b.ration_priority) < int(a.ration_priority))
+	var rationing := [false, false]
+	for t in 2:
+		var e := economies[t]
+		rationing[t] = e.get_amount(ResourceTypes.FOOD) <= e.capacity(ResourceTypes.FOOD) * GameConfig.RATIONING_THRESHOLD
 	for s in squads:
+		if s.team < 0 or s.team > 1:
+			continue  # monstres : pas d'économie
 		var cost: Dictionary = s.data.upkeep_for(s.alive_count())
-		s.set_fed(cost.is_empty() or economies[s.team].pay_upkeep(cost))
+		if cost.is_empty():
+			s.set_fed(true)
+		elif rationing[s.team] and not s.ration_priority:
+			s.set_fed(false)
+		else:
+			s.set_fed(economies[s.team].pay_upkeep(cost))
 
 
 # --- Construction -------------------------------------------------------------
@@ -90,14 +104,23 @@ func placement_error(data: BuildingData, team: int, cell: Vector2i) -> String:
 		return "Case occupée."
 	if not economies[team].can_afford(data.cost):
 		return "Ressources insuffisantes."
+	if economies[team].inhabitants < data.workers:
+		return "Pas assez d'habitants."
 	return ""
 
 
 ## Paie et place le bâtiment. Retourne null si impossible.
-func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node = null) -> Building:
-	if placement_error(data, team, cell) != "":
+## `free` : bâtiment de départ (ni coût ni règle de placement).
+func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node = null, free: bool = false) -> Building:
+	if free:
+		if not map.is_free(cell):
+			return null
+	elif placement_error(data, team, cell) != "":
 		return null
-	economies[team].pay(data.cost)
+	else:
+		economies[team].pay(data.cost)
+	if data.workers > 0:
+		economies[team].take_inhabitants(data.workers)
 	var b := Building.new()
 	b.completed.connect(_on_building_completed)
 	b.recruited.connect(func(bb, u): squad_recruited.emit(bb, u))
@@ -120,7 +143,24 @@ func recruit_error(unit: UnitData, team: int, barracks: Building = null) -> Stri
 		return "Cette Caserne ne recrute pas cette unité."
 	if not economies[team].can_afford(unit.cost):
 		return "Ressources insuffisantes."
+	if economies[team].inhabitants < unit.squad_size:
+		return "Pas assez d'habitants (%d nécessaires)." % unit.squad_size
+	if barracks.queued_individuals() + unit.squad_size > GameConfig.BARRACKS_CAPACITY:
+		return "Caserne pleine (%d individus au plus)." % GameConfig.BARRACKS_CAPACITY
 	return ""
+
+
+## Annule le dernier recrutement en file : coût et habitants remboursés.
+func cancel_recruit(barracks: Building) -> UnitData:
+	if barracks == null or barracks.queue.is_empty():
+		return null
+	var unit: UnitData = barracks.queue.pop_back()
+	if barracks.queue.is_empty():
+		barracks.recruit_progress = 0.0
+	economies[barracks.team].add_all(unit.cost)
+	economies[barracks.team].give_inhabitants(unit.squad_size)
+	barracks.queue_redraw()
+	return unit
 
 
 ## Paie et ajoute `unit` à la file de la Caserne (choisie, sinon la moins occupée).
@@ -131,6 +171,7 @@ func recruit(unit: UnitData, team: int, barracks: Building = null) -> Building:
 	if recruit_error(unit, team, barracks) != "":
 		return null
 	economies[team].pay(unit.cost)
+	economies[team].take_inhabitants(unit.squad_size)
 	barracks.queue.append(unit)
 	barracks.queue_redraw()
 	return barracks
@@ -146,6 +187,8 @@ func best_barracks(team: int, unit: UnitData) -> Building:
 
 func _on_building_completed(b: Building) -> void:
 	_refresh_storage(b.team)
+	if b.data.inhabitants > 0:
+		economies[b.team].give_inhabitants(b.data.inhabitants)
 	if b.data.workers > 0:
 		workers_requested.emit(b, b.data.workers)
 
@@ -161,3 +204,9 @@ func _refresh_storage(team: int) -> void:
 
 func buildings_of(team: int) -> Array:
 	return buildings.filter(func(b): return is_instance_valid(b) and b.team == team)
+
+
+## La nourriture de `team` est-elle sous le seuil de rationnement ?
+func is_rationing(team: int) -> bool:
+	var e := economies[team]
+	return e.get_amount(ResourceTypes.FOOD) <= e.capacity(ResourceTypes.FOOD) * GameConfig.RATIONING_THRESHOLD

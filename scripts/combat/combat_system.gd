@@ -71,7 +71,7 @@ static func affected_individuals(actor: Individual, target: Individual) -> Array
 	var cells := affected_cells(actor.data, actor.get_cell(), target.get_cell())
 	for node in actor.get_tree().get_nodes_in_group(Individual.GROUP):
 		var o := node as Individual
-		if o and o.is_alive() and (o.team == actor.team) == allies and o.get_cell() in cells:
+		if o and o.is_alive() and not o.squad.sheltered and (o.team == actor.team) == allies and o.get_cell() in cells:
 			result.append(o)
 	return result
 

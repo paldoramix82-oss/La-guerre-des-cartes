@@ -45,18 +45,24 @@ const TEAM_NAMES: Array = ["Joueur 1", "Joueur 2"]
 ## Ressources de départ de chaque joueur.
 const STARTING_RESOURCES := {&"gold": 1000, &"food": 50, &"organic": 10, &"wood": 20, &"metal": 10}
 ## Stockage de base, sans Bank / Moulin / Entrepôt.
-const BASE_STORAGE := {&"gold": 2000, &"wood": 50, &"metal": 25, &"organic": 25, &"food": 100}
-## Récolte d'un ouvrier sur un gisement, par tour (2 pour le métal ; appliqué
-## aux autres ressources en attendant leur valeur).
-const WORKER_HARVEST_PER_TURN: int = 2
+const BASE_STORAGE := {&"gold": 2000, &"wood": 50, &"metal": 25, &"organic": 25, &"food": 100, &"crystal": 999}
+## Habitants du royaume au départ (décision de l'auteur) : ils deviennent ouvriers et soldats.
+const START_POPULATION: int = 50
+## Cabanes d'ouvriers déjà construites au départ (décision de l'auteur).
+const START_WORKER_HUTS: int = 2
+## Rationnement : sous ce seuil de nourriture (part de la capacité), seules les escouades
+## choisies avec le bouton « Nourrir » sont servies (décision de l'auteur : 20 %).
+const RATIONING_THRESHOLD: float = 0.2
+## Capacité de recrutement d'une Caserne, en individus (file comprise).
+const BARRACKS_CAPACITY: int = 25
 
 ## --- Cartes et mana (GDD §4, §9) ---
 ## Limite normale de la main (GDD §9).
 const HAND_LIMIT: int = 3
-## [PROVISOIRE] Régénération naturelle de mana par tour (GDD §13 : à définir).
-const MANA_REGEN_PER_TURN: float = 0.25
-## [PROVISOIRE] Capacité maximale de mana.
-const MANA_MAX: float = 10.0
+## Régénération naturelle de mana par tour (décision de l'auteur).
+const MANA_REGEN_PER_TURN: float = 5.0
+## Capacité maximale de mana (décision de l'auteur).
+const MANA_MAX: float = 20.0
 ## Composition du deck (GDD §9) : 10 bonus, 5 malus, 5 neutres.
 const DECK_BONUS: int = 10
 const DECK_MALUS: int = 5

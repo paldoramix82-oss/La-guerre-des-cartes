@@ -51,6 +51,7 @@ func _ready() -> void:
 	selection.controlled_team_changed.connect(func(t): fog.set_team(t); camera.position = map.cell_to_world(map.base_of(t)))
 	hud.command.connect(_on_hud_command)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
+	_place_starting_buildings()
 	if GameConfig.SPAWN_TEST_ARMIES:
 		_spawn_test_armies()
 	camera.position = map.cell_to_world(map.base_of(0) + Vector2i(4, 0))
@@ -126,11 +127,43 @@ func _on_hud_command(cmd: StringName) -> void:
 		&"move": selection.start_order_mode(SelectionController.OrderMode.MOVE)
 		&"attack": selection.start_order_mode(SelectionController.OrderMode.ATTACK)
 		&"cancel":
+			var b := selection.selected_building
 			if cards.player(selection.controlled_team).pending:
 				cards.player(selection.controlled_team).cancel_pending()
+			elif is_instance_valid(b) and not b.queue.is_empty():
+				var u := economy.cancel_recruit(b)
+				selection.notify.emit("Recrutement annulé : %s (remboursé)." % u.display_name)
 			else:
 				selection.cancel()
+		&"feed": _toggle_feed()
 		&"center": _center_on_selection()
+
+
+## Bouton « Nourrir » : les escouades choisies sont servies en priorité.
+func _toggle_feed() -> void:
+	var squads := selection.selected.filter(func(s): return is_instance_valid(s) and not s.data.upkeep.is_empty())
+	if squads.is_empty():
+		selection.notify.emit("Choisissez les escouades à nourrir.")
+		return
+	var on := not squads.all(func(s): return s.ration_priority)
+	for s in squads:
+		s.ration_priority = on
+		for m in s.members:
+			m.queue_redraw()
+	selection.notify.emit("Nourries en priorité." if on else "Plus de priorité de nourriture.")
+
+
+## Départ : cabanes d'ouvriers déjà construites (décision de l'auteur).
+func _place_starting_buildings() -> void:
+	var hut := BuildingDatabase.get_building(&"worker_hut")
+	for team in 2:
+		var dir := 1 if team == 0 else -1
+		var base := map.base_of(team)
+		for i in GameConfig.START_WORKER_HUTS:
+			var want := base + Vector2i(3 * dir, -3 + 6 * i)
+			var cells := map.spread_cells(want, 1)
+			if not cells.is_empty():
+				economy.place_building(hut, team, cells[0], map, true)
 
 
 func _center_on_selection() -> void:
