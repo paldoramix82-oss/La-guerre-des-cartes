@@ -54,6 +54,11 @@ enum AttackPattern {
 @export var upkeep: Dictionary = {}
 
 
+## Vision en cases.
+func vision_range() -> int:
+	return vision if vision > 0 else int(move_speed) + GameConfig.VISION_BONUS
+
+
 ## Consommation par tour de `alive` individus.
 func upkeep_for(alive: int) -> Dictionary:
 	var out := {}
@@ -64,6 +69,14 @@ func upkeep_for(alive: int) -> Dictionary:
 @export_group("Déplacement")
 ## Déplacement en cases par seconde. La vision vaut déplacement + 2 cases.
 @export var move_speed: float = 1.0
+
+@export_group("Monstre")
+## Vision en cases (0 : déplacement + GameConfig.VISION_BONUS).
+@export var vision: int = 0
+## Récompense donnée au joueur qui tue CHAQUE individu, ex. {&"food": 4, &"organic": 1}.
+@export var loot: Dictionary = {}
+## Préfère attaquer les escouades isolées / les plus petites (loups).
+@export var prefers_isolated: bool = false
 
 @export_group("Capacités")
 ## Ouvrier : récolte les gisements et construit les bâtiments (GDD §3.3).

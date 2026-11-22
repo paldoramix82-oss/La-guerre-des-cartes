@@ -14,8 +14,10 @@ var path: Array[Vector2i] = []
 var reserved_cell := NO_CELL
 ## Individu visé (ennemi pour l'attaque, allié pour le soin).
 var target: Individual = null
-## Brûlures actives, par individu source (id) : {damage, seconds_left, timer}.
+## Brûlures actives, par individu source (id) : {damage, seconds_left, timer, team}.
 var burns: Dictionary = {}
+## Camp de l'auteur du dernier coup reçu (récompense des monstres au tueur).
+var last_attacker_team: int = -1
 
 var _cooldown := 0.0
 # --- Animation (purement visuelle) ---
@@ -138,20 +140,32 @@ func heal(amount: int) -> void:
 ## Applique une brûlure : `damage` dégâts par seconde pendant `seconds` secondes.
 ## Une nouvelle brûlure de la même source relance la durée ; des sources différentes
 ## (deux Mages) se cumulent (décision de l'auteur).
-func apply_burn(source: int, damage: int, seconds: float) -> void:
+func apply_burn(source: int, damage: int, seconds: float, source_team: int = -1) -> void:
 	if burns.has(source):
 		burns[source].seconds_left = seconds
 	else:
-		burns[source] = {"damage": damage, "seconds_left": seconds, "timer": 1.0}
+		burns[source] = {"damage": damage, "seconds_left": seconds, "timer": 1.0, "team": source_team}
 
 
 func _die() -> void:
+	_give_loot()
 	hp = 0
 	path.clear()
 	_release()
 	remove_from_group(GROUP)
 	squad.on_member_died(self)
 	queue_free()
+
+
+## Monstre tué : sa récompense va au joueur qui a porté le dernier coup.
+func _give_loot() -> void:
+	if data.loot.is_empty() or last_attacker_team < 0 or last_attacker_team > 1 or not is_inside_tree():
+		return
+	var eco := get_tree().get_first_node_in_group(EconomySystem.GROUP) as EconomySystem
+	if eco == null:
+		return
+	eco.economy(last_attacker_team).add_all(data.loot)
+	Effects.floating_text(self, position + Vector2(0, -12), "+" + ResourceTypes.format(data.loot), Color(1, 0.85, 0.35))
 
 
 func _flash_hit(color: Color) -> void:
@@ -319,6 +333,7 @@ func _process_burns(delta: float) -> void:
 		b.seconds_left -= delta
 		if b.timer <= 0.0:
 			b.timer += 1.0
+			last_attacker_team = b.team
 			take_damage(b.damage, Color(1, 0.6, 0.2))
 			if not is_alive():
 				return

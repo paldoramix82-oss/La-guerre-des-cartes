@@ -4,22 +4,28 @@ Source : document de l'auteur « Le RTS » (`docs/sources/Le_RTS.pages`).
 Données correspondantes : `data/units/*.tres`, `data/buildings/*.tres` (vérifiées par les tests).
 Durées en **tours** (1 tour = `GameConfig.SECONDS_PER_TURN`).
 
+## Temps
+
+**1 tour = 20 secondes** (« pour le moment »). Production, construction, recrutement, consommation et
+mana sont en tours ; le combat et les déplacements sont en secondes.
+
 ## Unités
 
-| Unité | PV | Dégâts | Portée | Déplacement | Coût de création | Effectif |
-|---|---|---|---|---|---|---|
-| Guerrier | 50 | 10 | 1 | 1 | 4 Nourri, 50 Gd | 4 |
-| Archer | 30 | 20 | 3 | 2 | 2 Nourri, 30 Gd | 2 |
-| Cavalier | 75 | 15 | 1 en cercle | 4 | 5 Nourri, 100 Gd | 2 |
-| Mage | 25 | 10 + brûlure 2/T pendant 2 T | 2, zone 2 | 1 | 1 Nourri, 40 Gd | 1 |
-| Soigneur | 35 | soin 5 | 3, zone 2 | 2 | 1 Nourri, 30 Gd | 1 |
-| Mineur | 50 | 5 | 1 | 4 | 2 Nourri, 20 Gd | 1 |
-| Ouvrier | 30 * | 0 | — | 2 * | (Cabane Ouvrier) | 1 |
+| Unité | Effectif | PV | Dégâts / attaque | Intervalle | Portée | Déplacement (cases/s) | DPS d'escouade | Coût | Nourri / tour / individu |
+|---|---|---|---|---|---|---|---|---|---|
+| Guerrier | 4 | 50 | 5 | 2,5 s | 1 | 1 | 8 | 4 Nourri, 50 Gd | 2 |
+| Archer | 2 | 30 | 10 | 3 s | 3 | 2 | 6,67 | 2 Nourri, 30 Gd | 1 |
+| Cavalier | 2 | 75 | 8 (8 cases autour) | 4 s | 1 | 4 | 4 | 5 Nourri, 100 Gd | 3 |
+| Mage | 1 | 25 | 6 + brûlure 2 PV/s pendant 4 s | 3 s | 2, zone 2 | 1 | — | 1 Nourri, 40 Gd | 1 |
+| Soigneur | 1 | 35 | soin 5 | 3 s | 3, zone 2 | 2 | — | 1 Nourri, 30 Gd | 1 |
+| Mineur | 1 | 50 | 5 | 3 s | 1 | 4 | 1,67 | 2 Nourri, 20 Gd | 2 |
+| Ouvrier | 1 | 30 * | — | — | — | 2 * | — | (Cabane) | nourri par sa cabane |
 
-\* provisoire.
+\* provisoire. Coût de création **par escouade**. Vision = déplacement + 2 cases.
+Brûlure : relancée (pas cumulée) par le même Mage ; deux Mages différents cumulent.
+En combat, chaque individu vise l'ennemi le plus proche ; en déplacement, il contourne les cases occupées.
 
-Consommation par individu et par tour : Guerrier 2, Archer 1, Soigneur 1, Mage 1, Cavalier 3,
-Mineur 2 Nourri. Ouvrier : nourri par sa Cabane (3 Nourri / tour pour les 2).
+Monstres : voir `docs/PROTOTYPE_4.md`.
 
 ## Bâtiments
 
@@ -30,11 +36,13 @@ Mineur 2 Nourri. Ouvrier : nourri par sa Cabane (3 Nourri / tour pour les 2).
 | Ressource | Entrepôt | 125 | 50 Bs, 25 Ml, 30 O | 0 | 100 Gd, 7 Bs, 2 Ml | 2 | 3 | 6 Nourri |
 | Production | Culture | 50 | — | 10 Nourri | 20 Gd, 4 Bs, 2 O | 1 | 0 | 0 |
 | Production | Ferme | 125 | — | 25 Nourri, 2 O | 50 Gd, 8 Bs, 6 O | 2 | 0 | 2 Nourri |
-| Production | Mine | ??? | — | ??? | 75 Gd, 5 Bs, 3 Ml | 2 | 0 | 3 Nourri |
-| Logement | Cabane Ouvrier | — | 2 ouvriers | — | 2 Bs | — | — | 3 Nourri |
+| Production | Mine | — | — | 5 Ml + 1 lingot (10 Gd) | 75 Gd, 5 Bs, 3 Ml (exploitation) | 2 | 0 | 3 Nourri |
+| Logement | Cabane Ouvrier | — | 1 ouvrier | — | 2 Bs | immédiate | — | 3 Nourri |
+| Logement | Maison | — | +5 habitants | — | 30 Gd, 5 Bs * | 1 * | — | 2 Nourri |
 | Militaire | Caserne | — | — | — | 100 Gd | — | — | — |
 
 Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavaliers, 2 Mineurs, 1 Soigneur, 1 Mage.
+Capacité : 25 individus en file ; annulation remboursée.
 
 ## Défenses
 
@@ -53,27 +61,18 @@ Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavalier
 | Échelle | 0 | 0 | 1 | 1 | 0 | 1 Bs, 5 Gd | 0 |
 | Canon | 75 | 75 | 1 | 2 | 2 | 2 Bs, 1 Ml, 120 Gd | 2 |
 
-## Décisions de l'auteur (Prototype 2)
+## Décisions de l'auteur
 
-- Départ : 1000 Gd, 50 Nourri, 10 O, 20 Bs, 10 Ml.
-- Stockage de base (sans Bank / Moulin / Entrepôt) : 2000 Gd, 50 Bs, 25 Ml, 25 O, 100 Nourri.
-- Récolte **sur place** : un ouvrier récolte 2 par tour (métal). Gisements épuisables.
-- Gisements : forêt (bois, et nourriture), filons de métal, gisements d'or ; nourriture aussi ailleurs.
-- Or : gisements d'or, mines, pillage, butins de boss et de monstres.
-- Mines : pas de PV, indestructibles ; se capturent (siège) et se reprennent ; produisent un peu d'or et de métal.
-- Cabane Ouvrier : pas de PV, construite d'un coup ; les 3 Nourri / tour sont une **consommation**
-  qui nourrit directement ses 2 ouvriers (ils ne consomment rien d'autre).
-- Caserne : 4 tours de construction, pas de PV, indestructible.
-- « Cabane Garde » : nombre de cabanes de garde fournies autour du bâtiment pour le protéger.
-- Construction : il faut des ouvriers ; plus il y en a, plus c'est rapide.
-- Sans nourriture : bâtiments, ouvriers, gardes et unités s'arrêtent de fonctionner.
-- Organique : produit par la Ferme et obtenu sur les monstres / animaux de la forêt.
-- La consommation de nourriture varie d'une unité à l'autre (valeurs dans le tableau des unités).
-- Ferme : 2 Organique par tour (« pour l'instant », équilibrage plus tard).
-
-## Encore à définir
-
-- Quantité de chaque gisement ; récolte par tour du bois, de la nourriture et de l'or.
-- PV et vitesse de l'ouvrier.
-- Mine : production exacte (or, métal).
-- Barricade « 2 L ».
+- Départ : 1000 Gd, 50 Nourri, 10 O, 20 Bs, 10 Ml ; **50 habitants** ; **2 Cabanes Ouvrier** déjà construites.
+- Stockage de base : 2000 Gd, 50 Bs, 25 Ml, 25 O, 100 Nourri.
+- **Arbre** : 20 bois au total, 10 par tour ; **baies** : 10 Nourri, finies en un tour.
+- **Or et métal** : uniquement dans les mines (inépuisables) : 5 Ml + 1 lingot (= 10 Gd) par tour.
+- **Habitants** : ils deviennent ouvriers et soldats ; Maison = +5 habitants, 2 Nourri / tour.
+- **Ouvriers** : 1 par cabane, nourri par elle ; un ouvrier libre part construire seul ; on peut le
+  réaffecter ; pendant un combat, il se cache dans sa cabane.
+- **Rationnement** : sous 20 % de nourriture, seules les escouades choisies avec « Nourrir » sont servies.
+- **Mana** : 5 par tour, maximum 20. **Cristaux de mana** : laissés par les créatures magiques (golem),
+  pour les bâtiments de mana.
+- **Organique** : Ferme (2 / tour) et animaux de la forêt.
+- Sans nourriture : bâtiments et unités s'arrêtent.
+- Le jeu sera à terme en **vue isométrique**, en pixel art ; l'auteur dessinera le plan de la carte.

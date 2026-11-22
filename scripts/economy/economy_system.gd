@@ -14,6 +14,8 @@ extends Node
 ## [PROVISOIRE] Ordre de paiement : bâtiments (ordre de construction), puis escouades
 ## (ordre de création).
 
+const GROUP := &"economy_system"
+
 signal building_placed(building: Building)
 ## Une Cabane Ouvrier terminée : la scène doit faire apparaître ses ouvriers.
 signal workers_requested(building: Building, count: int)
@@ -30,6 +32,10 @@ var _turn_timer := 0.0
 func _init() -> void:
 	for team in 2:
 		economies.append(PlayerEconomy.new(team))
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP)
 
 
 func economy(team: int) -> PlayerEconomy:
@@ -61,10 +67,44 @@ func process_turn() -> void:
 		b.set_fed(fed)
 		if fed and not b.data.production.is_empty():
 			econ.add_all(b.data.production)
+	_mine_production()
 	_pay_squad_upkeep()
 	for econ in economies:
 		econ.end_turn()
 	turn_processed.emit()
+
+
+## Mines exploitées : consommation puis production pour leur propriétaire.
+func _mine_production() -> void:
+	if not is_inside_tree():
+		return
+	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
+		if o is MineSite and o.is_producing():
+			var econ := economies[o.team]
+			o.fed = o.data.upkeep.is_empty() or econ.pay_upkeep(o.data.upkeep)
+			if o.fed:
+				econ.add_all(o.data.production)
+			o.queue_redraw()
+
+
+## Lance l'exploitation d'une mine capturée : coût payé, les ouvriers la construisent.
+func exploit_error(mine: MineSite, team: int) -> String:
+	if mine.team != team:
+		return "Capturez d'abord cette mine."
+	if not mine.needs_exploitation():
+		return "Mine déjà exploitée." if mine.exploited else "Exploitation déjà lancée."
+	if not economies[team].can_afford(mine.data.cost):
+		return "Ressources insuffisantes."
+	return ""
+
+
+func start_exploitation(mine: MineSite, team: int) -> bool:
+	if exploit_error(mine, team) != "":
+		return false
+	economies[team].pay(mine.data.cost)
+	mine.exploit_started = true
+	mine.queue_redraw()
+	return true
 
 
 func _pay_squad_upkeep() -> void:

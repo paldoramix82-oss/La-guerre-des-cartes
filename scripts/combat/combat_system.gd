@@ -84,7 +84,8 @@ static func perform_action(actor: Individual, target: Individual) -> Array[Indiv
 		if d.action == UnitData.ActionType.HEAL:
 			o.heal(d.heal_amount)
 		else:
+			o.last_attacker_team = actor.team
 			if d.burn_seconds > 0.0 and d.burn_damage > 0:
-				o.apply_burn(actor.get_instance_id(), d.burn_damage, d.burn_seconds)
+				o.apply_burn(actor.get_instance_id(), d.burn_damage, d.burn_seconds, actor.team)
 			o.take_damage(d.damage)
 	return touched

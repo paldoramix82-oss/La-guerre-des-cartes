@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/loup_alpha.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"wolf_alpha"
+display_name = "Loup alpha"
+squad_size = 1
+hp = 70
+damage = 10
+attack_interval = 2.5
+attack_range = 1
+attack_pattern = 0
+zone_size = 1
+move_speed = 4.0
+vision = 8
+loot = {
+&"food": 8,
+&"organic": 3
+}
+prefers_isolated = true
+sprite = ExtResource("2_sprite")
+design_notes = "Chef de meute."

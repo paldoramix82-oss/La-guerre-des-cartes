@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/monstre.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"slime"
+display_name = "Slime"
+squad_size = 2
+hp = 65
+damage = 8
+attack_interval = 3.0
+attack_range = 1
+attack_pattern = 0
+zone_size = 1
+move_speed = 1.5
+vision = 4
+loot = {
+&"organic": 6
+}
+prefers_isolated = false
+sprite = ExtResource("2_sprite")
+design_notes = "Groupe de 2, faible ; ne poursuit pas longtemps."

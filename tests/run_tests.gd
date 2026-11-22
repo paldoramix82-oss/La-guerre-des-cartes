@@ -61,6 +61,11 @@ func _run_all() -> void:
 	_test_rationing()
 	_test_workers_auto_build()
 	_test_workers_hide_in_hut()
+	_test_monster_data()
+	_test_monster_aggro_and_isolated()
+	_test_monster_leash_heal_respawn_loot()
+	_test_golem_ground_slam()
+	_test_mine_capture_and_exploitation()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -485,7 +490,7 @@ func _test_buildings_match_document() -> void:
 		&"warehouse": [125, {G: 100, B: 7, M: 2}, 2, {B: 50, M: 25, O: 30}, {}, {F: 6}],
 		&"crop": [50, {G: 20, B: 4, O: 2}, 1, {}, {F: 10}, {}],
 		&"farm": [125, {G: 50, B: 8, O: 6}, 2, {}, {F: 25, O: 2}, {F: 2}],
-		&"mine": [0, {G: 75, B: 5, M: 3}, 2, {}, {}, {F: 3}],
+		&"mine": [0, {G: 75, B: 5, M: 3}, 2, {}, {M: 5, G: 10}, {F: 3}],
 		&"archer_tower": [100, {B: 4, M: 2, G: 60}, 3, {}, {}, {F: 2}],
 		&"cannon": [150, {B: 2, M: 5, G: 100}, 4, {}, {}, {}],
 		&"guard_hut": [50, {B: 2, G: 20}, 1, {}, {}, {F: 2}],
@@ -1140,4 +1145,141 @@ func _test_workers_hide_in_hut() -> void:
 	a.free()
 	_run_world(e, [w], Squad.SAFE_DELAY + 1.0)
 	check(not w.sheltered and w.work_target == tree, "plus d'ennemi : il ressort et reprend sa récolte")
+	_clear_economy(e)
+
+
+# --- Monstres et mines (Prototype 4) --------------------------------------------------
+
+func _camp(id: StringName, cell: Vector2i) -> MonsterCamp:
+	var c := MonsterCamp.new()
+	root.add_child(c)
+	c.setup(MonsterDatabase.get_camp(id), map, cell, root)
+	return c
+
+
+## Fait tourner toutes les escouades et les camps / mines donnés.
+func _run_all_world(seconds: float, extra: Array = []) -> void:
+	var t := 0.0
+	while t < seconds - 0.0001:
+		for s in get_nodes_in_group(Squad.GROUP):
+			if is_instance_valid(s):
+				s.tick(0.05)
+		for x in extra:
+			if is_instance_valid(x):
+				x.tick(0.05)
+		_flush_deleted()
+		t += 0.05
+
+
+func _clear_camps() -> void:
+	for c in get_nodes_in_group(MonsterCamp.GROUP):
+		c.free()
+	_clear_squads()
+
+
+func _test_monster_data() -> void:
+	var expected := {  # effectif, PV, dégâts, intervalle, vitesse, vision
+		&"wolf": [4, 35, 6, 2.5, 3.5, 6], &"wolf_alpha": [1, 70, 10, 2.5, 4.0, 8],
+		&"bear": [1, 200, 20, 4.0, 2.0, 7], &"golem": [1, 350, 20, 5.0, 1.0, 5], &"slime": [2, 65, 8, 3.0, 1.5, 4],
+	}
+	for id in expected:
+		var m := MonsterDatabase.get_monster(id)
+		check(m != null and [m.squad_size, m.hp, m.damage, m.attack_interval, m.move_speed, m.vision] == expected[id],
+				"%s conforme aux valeurs de l'auteur" % id)
+	check(MonsterDatabase.get_monster(&"bear").loot == {&"food": 30, &"organic": 12}, "ours : 30 Nourri, 12 O")
+	check(MonsterDatabase.get_monster(&"golem").loot == {&"crystal": 2}, "golem : 2 cristaux de mana")
+	var respawn := {&"wolf_pack": 3.0, &"slimes": 2.0, &"bear": 5.0, &"golem": 8.0}
+	for id in respawn:
+		check(is_equal_approx(MonsterDatabase.get_camp(id).respawn_turns, respawn[id]), "%s : réapparition après %d tours" % [id, respawn[id]])
+	check(MonsterDatabase.camps_by_danger().front().id == &"slimes" and MonsterDatabase.camps_by_danger().back().id == &"golem",
+			"danger croissant : slimes < loups < ours < golem")
+
+
+func _test_monster_aggro_and_isolated() -> void:
+	var camp := _camp(&"wolf_pack", Vector2i(40, 8))
+	check(camp.squads.size() == 2 and camp.squads.all(func(s): return s.team == GameConfig.MONSTER_TEAM), "meute : 2 escouades de monstres")
+	_run_all_world(1.0, [camp])
+	check(camp.mode == MonsterCamp.Mode.CALM, "sans intrus : la meute reste calme")
+	var big := spawn(&"warrior", 0, Vector2i(44, 8))
+	var small := spawn(&"archer", 0, Vector2i(40, 12))
+	big.state = Squad.State.MOVING
+	small.state = Squad.State.MOVING
+	_run_all_world(0.3, [camp])
+	check(camp.mode == MonsterCamp.Mode.FIGHT, "unité dans la vision des loups : ils attaquent")
+	check(camp.squads[0].target == small, "les loups visent l'escouade isolée (la plus petite)")
+	_clear_camps()
+
+
+func _test_monster_leash_heal_respawn_loot() -> void:
+	var e := _new_economy()
+	var camp := _camp(&"slimes", Vector2i(40, 8))
+	var slime: Squad = camp.squads[0]
+	slime.members[0].hp = 10
+	camp.mode = MonsterCamp.Mode.FIGHT
+	slime.members[0].place(Vector2i(40, 15))  # hors du territoire (rayon 4)
+	_run_all_world(0.3, [camp])
+	check(camp.mode == MonsterCamp.Mode.RETURN, "limite du territoire : les monstres rentrent")
+	_run_all_world(8.0, [camp])
+	check(camp.mode == MonsterCamp.Mode.CALM and slime.members[0].hp == 65, "de retour au camp : soignés entièrement")
+	# Récompense au tueur, puis réapparition.
+	var food := e.economy(0).get_amount(&"organic")
+	for m in slime.members.duplicate():
+		m.last_attacker_team = 0
+		m.take_damage(999)
+	_flush_deleted()
+	check(e.economy(0).get_amount(&"organic") == food + 12, "2 slimes tués : +12 Organique pour le tueur")
+	check(camp.is_cleared(), "camp vidé")
+	_run_all_world(2.0 * GameConfig.SECONDS_PER_TURN - 1.0, [camp])
+	check(camp.is_cleared(), "pas de réapparition avant 2 tours")
+	_run_all_world(1.5, [camp])
+	check(not camp.is_cleared(), "slimes réapparus après 2 tours")
+	_clear_camps()
+	_clear_economy(e)
+
+
+func _test_golem_ground_slam() -> void:
+	var camp := _camp(&"golem", Vector2i(40, 8))
+	var g: Individual = camp.squads[0].members[0]
+	var c := g.get_cell()
+	var w := spawn(&"warrior", 0, c, [c + Vector2i(1, 0), c + Vector2i(-1, 1), c + Vector2i(0, -1), c + Vector2i(3, 0)])
+	CombatSystem.perform_action(g, w.members[0])
+	var hps: Array = w.members.map(func(m): return m.hp)
+	check(hps == [30, 30, 30, 50], "golem : 20 dégâts à chaque unité des 8 cases adjacentes (%s)" % [hps])
+	_clear_camps()
+
+
+func _test_mine_capture_and_exploitation() -> void:
+	var e := _new_economy()
+	var mine := MineSite.new()
+	root.add_child(mine)
+	mine.setup(map, Vector2i(40, 20), false)
+	var w := spawn(&"warrior", 0, Vector2i(41, 21))
+	var monster := Squad.new()
+	root.add_child(monster)
+	monster.setup(MonsterDatabase.get_monster(&"slime"), GameConfig.MONSTER_TEAM, map, Vector2i(38, 19), [Vector2i(38, 19), Vector2i(38, 18)])
+	monster.state = Squad.State.MOVING
+	_run_all_world(GameConfig.MINE_CAPTURE_SECONDS + 1.0, [mine])
+	check(mine.team == -1, "capture impossible tant qu'il reste des unités sur place")
+	monster.free()
+	_run_all_world(GameConfig.MINE_CAPTURE_SECONDS - 1.0, [mine])
+	check(mine.team == -1 and mine.capture_progress > 0.0, "capture en cours (rester un moment)")
+	_run_all_world(1.5, [mine])
+	check(mine.team == 0, "mine capturée")
+	check(e.exploit_error(mine, 1) != "", "l'adversaire ne peut pas l'exploiter")
+	var gold := e.economy(0).get_amount(&"gold")
+	check(e.start_exploitation(mine, 0) and e.economy(0).get_amount(&"gold") == gold - 75, "exploitation : coût de la mine payé (75 Gd...)")
+	var worker := _spawn_worker(0, Vector2i(42, 20))
+	_run_world(e, [worker], 2.0 * GameConfig.SECONDS_PER_TURN + 3.0)
+	check(mine.exploited, "les ouvriers construisent l'exploitation (2 tours)")
+	var econ := e.economy(0)
+	econ.amounts[&"food"] = 80
+	var metal := econ.get_amount(&"metal")
+	gold = econ.get_amount(&"gold")
+	e.process_turn()
+	check(econ.get_amount(&"metal") == metal + 5 and econ.get_amount(&"gold") == gold + 10,
+			"mine : +5 métal et 1 lingot (10 Gd) par tour")
+	mine.team = 1
+	mine.team = 0
+	check(mine.exploited and not mine.needs_exploitation(), "reprise : pas de reconstruction")
+	mine.free()
 	_clear_economy(e)

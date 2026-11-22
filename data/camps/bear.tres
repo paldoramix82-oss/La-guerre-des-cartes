@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MonsterCampData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/monster_camp_data.gd" id="1_camp"]
+[ext_resource type="Resource" path="res://data/monsters/bear.tres" id="2_m"]
+
+[resource]
+script = ExtResource("1_camp")
+id = &"bear"
+display_name = "Ours"
+squads = [ExtResource("2_m")]
+respawn_turns = 5.0
+territory_radius = 5
+danger = 2

@@ -30,7 +30,7 @@ func _ready() -> void:
 	vb.add_child(logo)
 
 	var subtitle := Label.new()
-	subtitle.text = "Prototype 5 — Mana et cartes"
+	subtitle.text = "Prototype 4 — Jungle, monstres et mines"
 	subtitle.theme_type_variation = &"TitleLabel"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(subtitle)

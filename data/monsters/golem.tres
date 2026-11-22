@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/golem.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"golem"
+display_name = "Golem"
+squad_size = 1
+hp = 350
+damage = 20
+attack_interval = 5.0
+attack_range = 1
+attack_pattern = 1
+zone_size = 1
+move_speed = 1.0
+vision = 5
+loot = {
+&"crystal": 2
+}
+prefers_isolated = false
+sprite = ExtResource("2_sprite")
+design_notes = "Frappe le sol : 20 dégâts à chaque unité des 8 cases adjacentes. Résistance physique : à définir."

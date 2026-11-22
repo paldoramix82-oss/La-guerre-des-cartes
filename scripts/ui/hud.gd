@@ -12,6 +12,7 @@ extends CanvasLayer
 signal command(name: StringName)
 signal build_requested(data: BuildingData)
 signal recruit_requested(unit: UnitData)
+signal exploit_requested(mine: MineSite)
 
 const NOTICE_DURATION := 3.0
 const HELP := "Clic sur une escouade : la choisir · Glisser : en choisir plusieurs\n" \
@@ -54,6 +55,7 @@ var _notice: Label
 var _pause_menu: PauseMenu
 var _selection: Array[Squad] = []
 var _building: Building = null
+var _mine: MineSite = null
 var _team := 0
 var _game_time := 0.0
 var _notice_time := 0.0
@@ -170,6 +172,7 @@ func _build_bottom() -> void:
 	_build_panel.build_requested.connect(func(d): build_requested.emit(d))
 	_build_panel.hovered.connect(func(t): _hover_text = t)
 	_build_panel.recruit_requested.connect(func(u): recruit_requested.emit(u))
+	_build_panel.exploit_requested.connect(func(m): exploit_requested.emit(m))
 
 	var cmds := CommandPanel.new()
 	_root.add_child(cmds)
@@ -256,8 +259,15 @@ func _refresh_selection() -> void:
 	if _building and _selection.is_empty():
 		_portrait.texture = _building.data.sprite
 		_portrait_name.text = _building.data.display_name
+	if not is_instance_valid(_mine):
+		_mine = null
+	if _mine and _selection.is_empty():
+		_portrait.texture = load(MineSite.CENTRAL_SPRITE if _mine.is_central else MineSite.SPRITE)
+		_portrait_name.text = "Mine centrale" if _mine.is_central else "Mine"
 	if _hover_text != "":
 		_info.text = _hover_text
+	elif _mine and _selection.is_empty():
+		_info.text = _mine_info(_mine)
 	elif _building and _selection.is_empty():
 		_info.text = _building_info(_building)
 	elif _selection.is_empty():
@@ -270,6 +280,20 @@ func _refresh_selection() -> void:
 		if _selection.size() > 7:
 			lines.append("… et %d autres escouades" % (_selection.size() - 7))
 		_info.text = "\n".join(lines)
+
+
+static func _mine_info(m: MineSite) -> String:
+	var lines := ["Mine centrale" if m.is_central else "Mine"]
+	if m.exploited:
+		lines.append("Exploitée : %s par tour, consomme %s" % [ResourceTypes.format(m.data.production), ResourceTypes.format(m.data.upkeep)])
+		if not m.fed:
+			lines.append("Sans nourriture : à l'arrêt")
+	elif m.exploit_started:
+		lines.append("Exploitation en construction : %d %%" % int(100.0 * m.exploit_progress / m.work_needed()))
+	else:
+		lines.append("Capturée. Onglet Construction : Exploiter (%s)." % ResourceTypes.format(m.data.cost))
+	lines.append("Laissez des unités à côté pour la garder.")
+	return "\n".join(lines)
 
 
 static func _building_info(b: Building) -> String:
@@ -313,6 +337,11 @@ static func _status(s: Squad) -> String:
 
 func on_selection_changed(selection: Array[Squad]) -> void:
 	_selection = selection.duplicate()
+
+
+func on_mine_selected(m: MineSite) -> void:
+	_mine = m
+	_build_panel.set_mine(m)
 
 
 func on_building_selected(b: Building) -> void:

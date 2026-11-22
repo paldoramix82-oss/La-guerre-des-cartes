@@ -37,8 +37,10 @@ const BASE_VISION: int = 9
 const REPATH_INTERVAL: float = 0.5
 
 ## Couleurs des joueurs (index = équipe).
-const TEAM_COLORS: Array = [Color(0.25, 0.55, 1.0), Color(1.0, 0.32, 0.25)]
-const TEAM_NAMES: Array = ["Joueur 1", "Joueur 2"]
+## Couleurs et noms : joueurs 1 et 2, puis les monstres neutres (MONSTER_TEAM).
+const TEAM_COLORS: Array = [Color(0.25, 0.55, 1.0), Color(1.0, 0.32, 0.25), Color(0.6, 0.45, 0.75)]
+const TEAM_NAMES: Array = ["Joueur 1", "Joueur 2", "Monstres"]
+const MONSTER_TEAM: int = 2
 
 ## --- Économie (valeurs données par l'auteur, voir docs/VALEURS.md) ---
 
@@ -67,6 +69,12 @@ const MANA_MAX: float = 20.0
 const DECK_BONUS: int = 10
 const DECK_MALUS: int = 5
 const DECK_NEUTRAL: int = 5
+
+## --- Mines (décisions de l'auteur ; durée et rayon de capture PROVISOIRES) ---
+## [PROVISOIRE] Temps de présence sans ennemi pour capturer une mine (s).
+const MINE_CAPTURE_SECONDS: float = 20.0
+## [PROVISOIRE] Rayon (cases) de la zone de capture autour d'une mine.
+const MINE_CAPTURE_RADIUS: int = 3
 
 ## Outil de test : faire apparaître une armée de chaque côté au lancement.
 ## Désactivé : avec la consommation de nourriture, elle serait affamée en 2 tours ;

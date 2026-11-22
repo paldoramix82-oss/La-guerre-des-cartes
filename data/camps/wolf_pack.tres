@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MonsterCampData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/monster_camp_data.gd" id="1_camp"]
+[ext_resource type="Resource" path="res://data/monsters/wolf.tres" id="2_m"]
+[ext_resource type="Resource" path="res://data/monsters/wolf_alpha.tres" id="3_m"]
+
+[resource]
+script = ExtResource("1_camp")
+id = &"wolf_pack"
+display_name = "Meute de loups"
+squads = [ExtResource("2_m"), ExtResource("3_m")]
+respawn_turns = 3.0
+territory_radius = 8
+danger = 1

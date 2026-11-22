@@ -1,6 +1,6 @@
 # Consignes pour Claude
 
-Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`, `docs/PROTOTYPE_2.md`, `docs/PROTOTYPE_3.md`, `docs/PROTOTYPE_5.md`. Questions en attente : `docs/QUESTIONS.md`. Valeurs : `docs/VALEURS.md`. Carte : `docs/CARTE.md`.
+Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. État : `docs/PROTOTYPE_1.md`, `docs/PROTOTYPE_2.md`, `docs/PROTOTYPE_3.md`, `docs/PROTOTYPE_4.md`, `docs/PROTOTYPE_5.md`. Questions en attente : `docs/QUESTIONS.md`. Valeurs : `docs/VALEURS.md`. Carte : `docs/CARTE.md`.
 
 ## Règles (GDD §15)
 
@@ -25,4 +25,7 @@ Projet : RTS Godot 4 (GDScript). Référence de conception : `docs/GDD.md`. Éta
 - Commandes : tout doit rester jouable au trackpad Mac (un seul bouton, pas de molette).
 - Les tests utilisent la petite carte fixe (`GameMap.generate_placeholder_layout`, `auto_generate = false`) ;
   la grande carte est testée à part (`_test_map_generator`).
+- 1 tour = `GameConfig.SECONDS_PER_TURN` (20 s) ; combat et déplacements en secondes.
+- Les monstres sont l'équipe `GameConfig.MONSTER_TEAM` (2) : toujours penser à elle (économie, brouillard).
+- Le jeu passera à terme en vue isométrique : garder le rendu séparé de la logique de grille.
 - Le code et les commentaires sont en français.

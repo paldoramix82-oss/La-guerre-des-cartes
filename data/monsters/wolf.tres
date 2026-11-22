@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/unit_data.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/units/loup.png" id="2_sprite"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"wolf"
+display_name = "Loup"
+squad_size = 4
+hp = 35
+damage = 6
+attack_interval = 2.5
+attack_range = 1
+attack_pattern = 0
+zone_size = 1
+move_speed = 3.5
+vision = 6
+loot = {
+&"food": 4,
+&"organic": 1
+}
+prefers_isolated = true
+sprite = ExtResource("2_sprite")
+design_notes = "Meute : 4 loups + 1 alpha. Attaquent en groupe, préfèrent les cibles isolées."

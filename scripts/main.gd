@@ -26,6 +26,8 @@ func _ready() -> void:
 		var mine := MineSite.new()
 		map.add_child(mine)
 		mine.setup(map, c, c == Vector2i(map.width / 2, map.height / 2))
+		mine.captured.connect(_on_mine_captured)
+	_spawn_monster_camps()
 	cards = CardSystem.new()
 	cards.name = "Cards"
 	add_child(cards)
@@ -42,6 +44,8 @@ func _ready() -> void:
 	hud.build_requested.connect(selection.start_build)
 	hud.recruit_requested.connect(_on_recruit_requested)
 	selection.building_selected.connect(hud.on_building_selected)
+	selection.mine_selected.connect(hud.on_mine_selected)
+	hud.exploit_requested.connect(_on_exploit_requested)
 	selection.economy_system = economy
 	selection.build_mode_changed.connect(hud.on_build_mode_changed)
 	selection.notify.connect(hud.show_notice)
@@ -137,6 +141,38 @@ func _on_hud_command(cmd: StringName) -> void:
 				selection.cancel()
 		&"feed": _toggle_feed()
 		&"center": _center_on_selection()
+
+
+## Camps de monstres : plus on s'approche du centre, plus ils sont dangereux
+## (décision de l'auteur). Les camps, triés par distance au centre, sont répartis
+## en quarts : golems au centre, puis ours, loups, et slimes aux abords.
+func _spawn_monster_camps() -> void:
+	var camps: Array = map.features.get(&"camps", []).duplicate()
+	if camps.is_empty():
+		return
+	var center := Vector2(map.width / 2, map.height / 2)
+	camps.sort_custom(func(a, b): return Vector2(a).distance_to(center) < Vector2(b).distance_to(center))
+	var kinds := MonsterDatabase.camps_by_danger()
+	kinds.reverse()  # du plus fort au plus faible
+	for i in camps.size():
+		var kind: MonsterCampData = kinds[mini(i * kinds.size() / camps.size(), kinds.size() - 1)]
+		var camp := MonsterCamp.new()
+		squads_root.add_child(camp)
+		camp.setup(kind, map, camps[i], squads_root)
+
+
+func _on_mine_captured(mine: MineSite, team: int) -> void:
+	if team == selection.controlled_team:
+		selection.notify.emit("Mine capturée ! Choisissez-la pour l'exploiter.")
+
+
+func _on_exploit_requested(mine: MineSite) -> void:
+	var err := economy.exploit_error(mine, selection.controlled_team)
+	if err != "":
+		selection.notify.emit(err)
+		return
+	economy.start_exploitation(mine, selection.controlled_team)
+	selection.notify.emit("Exploitation lancée : les ouvriers libres vont construire la mine.")
 
 
 ## Bouton « Nourrir » : les escouades choisies sont servies en priorité.

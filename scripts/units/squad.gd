@@ -319,10 +319,10 @@ func _auto_acquire() -> void:
 
 ## Ouvrier libre : part de lui-même vers le chantier de son camp le plus proche.
 func _auto_build() -> void:
-	var best: Building = null
+	var best: MapObject = null
 	var best_d := INF
 	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
-		if o is Building and o.can_be_worked_by(self):
+		if (o is Building or o is MineSite) and o.can_be_worked_by(self):
 			var d := center().distance_squared_to(o.position)
 			if d < best_d:
 				best = o

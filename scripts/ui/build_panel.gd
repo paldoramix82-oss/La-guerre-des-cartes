@@ -8,6 +8,7 @@ extends TextureRect
 
 signal build_requested(data: BuildingData)
 signal recruit_requested(unit: UnitData)
+signal exploit_requested(mine: MineSite)
 ## Survol d'une case : texte d'information (vide quand la souris sort).
 signal hovered(text: String)
 
@@ -21,6 +22,8 @@ const SLOT_Y := [49, 133]
 const SLOT_SIZE := Vector2(77, 77)
 
 var economy_system: EconomySystem
+## Mine choisie à exploiter : l'onglet Construction ne propose alors que son exploitation.
+var mine: MineSite = null
 var team := 0
 var tab: Tab = Tab.CONSTRUCTION
 var _tab_buttons: Array[TextureButton] = []
@@ -66,6 +69,11 @@ func _ready() -> void:
 	set_tab(Tab.CONSTRUCTION)
 
 
+func set_mine(m: MineSite) -> void:
+	mine = m
+	set_tab(Tab.CONSTRUCTION)
+
+
 func set_tab(t: int) -> void:
 	tab = t as Tab
 	for i in 3:
@@ -76,6 +84,8 @@ func set_tab(t: int) -> void:
 		l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0) if i == t else Color(0, 0, 0, 0.7))
 	_slot_items.clear()
 	match tab:
+		Tab.CONSTRUCTION when is_instance_valid(mine) and mine.needs_exploitation():
+			_slot_items = [mine.data]
 		Tab.CONSTRUCTION:
 			var list := BuildingDatabase.load_all().values().filter(func(b): return b.player_buildable)
 			list.sort_custom(func(a, b): return [a.category, a.display_name] < [b.category, b.display_name])
@@ -89,7 +99,7 @@ func set_tab(t: int) -> void:
 		_slots[i].visible = item != null
 		if item:
 			_slots[i].icon = item.sprite
-			_slots[i].text = item.display_name
+			_slots[i].text = "Exploiter" if item.id == MineSite.DATA_ID else item.display_name
 	refresh()
 
 
@@ -100,7 +110,9 @@ func refresh() -> void:
 	var econ := economy_system.economy(team)
 	for i in mini(_slots.size(), _slot_items.size()):
 		var item = _slot_items[i]
-		if item is BuildingData:
+		if item is BuildingData and item.id == MineSite.DATA_ID:
+			_slots[i].disabled = not is_instance_valid(mine) or economy_system.exploit_error(mine, team) != ""
+		elif item is BuildingData:
 			_slots[i].disabled = not econ.can_afford(item.cost)
 		else:
 			_slots[i].disabled = economy_system.recruit_error(item, team) != ""
@@ -109,7 +121,9 @@ func refresh() -> void:
 func _on_slot_pressed(idx: int) -> void:
 	if idx >= _slot_items.size():
 		return
-	if _slot_items[idx] is BuildingData:
+	if _slot_items[idx] is BuildingData and _slot_items[idx].id == MineSite.DATA_ID:
+		exploit_requested.emit(mine)
+	elif _slot_items[idx] is BuildingData:
 		build_requested.emit(_slot_items[idx])
 	else:
 		recruit_requested.emit(_slot_items[idx])
@@ -121,7 +135,7 @@ func _describe(idx: int) -> String:
 	var item = _slot_items[idx]
 	if item is BuildingData:
 		var d: BuildingData = item
-		var lines := ["%s — %s" % [d.display_name, ResourceTypes.format(d.cost)]]
+		var lines := ["%s — %s" % ["Exploiter la mine" if d.id == MineSite.DATA_ID else d.display_name, ResourceTypes.format(d.cost)]]
 		lines.append("Construction : " + ("immédiate" if d.build_turns == 0 else "%d tours (1 ouvrier)" % d.build_turns))
 		if not d.storage.is_empty():
 			lines.append("Stockage : +" + ResourceTypes.format(d.storage))

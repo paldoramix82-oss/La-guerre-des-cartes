@@ -17,6 +17,10 @@ build_turns = 2
 upkeep = {
 &"food": 3
 }
-design_notes = "Pas de PV, indestructible : se capture (siège) et se reprend. Produit un peu d'or et de métal (quantités à définir). Prototype 4 (jungle)."
+design_notes = "Mine (puits) : sans PV, indestructible. Capture : éliminer les unités présentes puis rester un moment. Exploitation : coût et 2 tours de construction une seule fois (pas de reconstruction après une reprise). Produit 5 métal + 1 lingot (10 Gd) par tour, consomme 3 Nourri / tour. Inépuisable."
 sprite = ExtResource("2_sprite")
 destructible = false
+production = {
+&"metal": 5,
+&"gold": 10
+}
