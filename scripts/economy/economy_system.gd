@@ -136,10 +136,11 @@ func _pay_squad_upkeep() -> void:
 func placement_error(data: BuildingData, team: int, cell: Vector2i) -> String:
 	if not data.player_buildable:
 		return "Ce bâtiment ne se construit pas encore."
-	if map.kingdom_of(cell) != team:
-		return "Construisez dans votre royaume."
-	if not map.is_free(cell):
-		return "Case occupée."
+	for c in data.footprint_cells(cell):
+		if map.kingdom_of(c) != team:
+			return "Construisez dans votre royaume."
+		if not map.is_free(c):
+			return "Case occupée."
 	if not economies[team].can_afford(data.cost):
 		return "Ressources insuffisantes."
 	if economies[team].inhabitants < data.workers:
@@ -151,8 +152,9 @@ func placement_error(data: BuildingData, team: int, cell: Vector2i) -> String:
 ## `free` : bâtiment de départ (ni coût ni règle de placement).
 func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node = null, free: bool = false) -> Building:
 	if free:
-		if not map.is_free(cell):
-			return null
+		for c in data.footprint_cells(cell):
+			if not map.is_free(c):
+				return null
 	elif placement_error(data, team, cell) != "":
 		return null
 	else:
@@ -226,6 +228,20 @@ func best_barracks(team: int, unit: UnitData) -> Building:
 
 func _on_building_completed(b: Building) -> void:
 	_refresh_storage(b.team)
+	# Bank, Moulin, Entrepôt « viennent avec » leurs Cabanes Garde (décision de l'auteur).
+	if b.data.guard_huts > 0:
+		var hut := BuildingDatabase.get_building(&"guard_hut")
+		var cells := map.spread_cells(b.cell, b.data.guard_huts + 8)
+		var placed := 0
+		for c in cells:
+			if placed >= b.data.guard_huts:
+				break
+			if CombatSystem.grid_distance(c, b.cell) < 2:
+				continue  # laisser l'accès au bâtiment
+			var gh := place_building(hut, b.team, c, b.get_parent(), true)
+			if gh:
+				gh._complete()
+				placed += 1
 	if b.data.inhabitants > 0:
 		economies[b.team].give_inhabitants(b.data.inhabitants)
 	if b.data.workers > 0:

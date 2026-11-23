@@ -71,6 +71,9 @@ func _run_all() -> void:
 	_test_ranged_keep_distance()
 	_test_buildings_take_damage()
 	_test_defenses_fire()
+	_test_guard_hut_garrison()
+	_test_bank_comes_with_guard_huts()
+	_test_barricade_two_cells()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -1408,12 +1411,6 @@ func _test_defenses_fire() -> void:
 	tower._physics_process(0.05)
 	check(near.members[0].hp == 50, "défense non nourrie : elle ne tire pas")
 	_clear_squads()
-	var hut := _defense(e, &"guard_hut", Vector2i(5, 20))
-	var w := spawn(&"warrior", 1, Vector2i(7, 20), [Vector2i(7, 20)])
-	w.state = Squad.State.MOVING
-	hut._physics_process(0.05)
-	check(w.members[0].hp == 30, "cabane garde : 2 gardes, 2 x 10 dégâts")
-	_clear_squads()
 	var mortar := _defense(e, &"mortar", Vector2i(5, 28))
 	var close := spawn(&"warrior", 1, Vector2i(6, 28), [Vector2i(6, 28)])
 	close.state = Squad.State.MOVING
@@ -1425,4 +1422,59 @@ func _test_defenses_fire() -> void:
 	mortar._physics_process(0.05)
 	check(pair.members[0].hp == 20 and pair.members[1].hp == 20, "mortier : 30 dégâts sur 2 cases alignées")
 	_clear_squads()
+	_clear_economy(e)
+
+
+## Cabane Garde : on y place des unités ; elles sortent quand un ennemi entre en vue.
+func _test_guard_hut_garrison() -> void:
+	var e := _new_economy()
+	var hut := _defense(e, &"guard_hut", Vector2i(6, 20))
+	check(hut.garrison != null and hut.turret == null and hut.garrison.capacity() == 2, "cabane garde : un abri de 2 individus")
+	var a := spawn(&"archer", 0, Vector2i(3, 20))
+	var w := spawn(&"warrior", 0, Vector2i(3, 24))
+	check(not hut.garrison.can_enter(w), "4 guerriers : trop nombreux pour la cabane")
+	check(a.order_garrison(hut), "archers envoyés dans la cabane")
+	_run_all_world(4.0, [hut])
+	check(a.sheltered and not a.members[0].visible, "les archers sont à l'intérieur (cachés)")
+	var enemy := spawn(&"warrior", 1, Vector2i(9, 20), [Vector2i(9, 20)])
+	enemy.state = Squad.State.MOVING
+	_run_all_world(0.5, [hut])
+	check(not a.sheltered and a.state == Squad.State.ACTING, "ennemi en vue : les gardes sortent défendre")
+	_run_all_world(8.0, [hut])
+	check(not is_instance_valid(enemy) or enemy.alive_count() == 0 or enemy.members[0].hp < 50, "les gardes attaquent l'ennemi")
+	if is_instance_valid(enemy):
+		enemy.free()
+	_run_all_world(6.0, [hut])
+	check(a.sheltered, "plus d'ennemi : les gardes rentrent")
+	hut.garrison.release_all()
+	check(not a.sheltered and a.garrison == null, "bouton Annuler : les gardes sortent pour de bon")
+	_clear_squads()
+	_clear_economy(e)
+
+
+func _test_bank_comes_with_guard_huts() -> void:
+	var e := _new_economy()
+	e.economy(0).amounts[&"gold"] = 1000
+	e.economy(0).amounts[&"wood"] = 50
+	var bank := e.place_building(BuildingDatabase.get_building(&"bank"), 0, Vector2i(6, 12))
+	bank._complete()
+	var huts := e.buildings_of(0).filter(func(b): return b.data.id == &"guard_hut")
+	check(huts.size() == 5, "Bank terminée : 5 Cabanes Garde autour (%d)" % huts.size())
+	check(huts.all(func(h): return CombatSystem.grid_distance(h.cell, bank.cell) >= 2), "elles laissent l'accès au bâtiment")
+	_clear_economy(e)
+
+
+func _test_barricade_two_cells() -> void:
+	var e := _new_economy()
+	var bar := _defense(e, &"barricade", Vector2i(8, 33))
+	check(bar.occupied_cells() == [Vector2i(8, 33), Vector2i(9, 33)], "barricade : 2 cases de long")
+	check(not map.is_walkable(Vector2i(9, 33)), "les 2 cases bloquent le passage")
+	check(e.placement_error(BuildingDatabase.get_building(&"barricade"), 0, Vector2i(7, 33)) == "Case occupée.",
+			"on ne peut pas poser une barricade à cheval sur une autre")
+	bar.take_damage(50)
+	_flush_deleted()
+	for o in get_nodes_in_group(MapObject.GROUP):
+		if o.is_queued_for_deletion():
+			o.free()
+	check(map.is_walkable(Vector2i(9, 33)), "barricade détruite : le passage est libre")
 	_clear_economy(e)

@@ -9,6 +9,8 @@ var map: GameMap
 var cell := Vector2i.ZERO
 ## Propriétaire : 0, 1, ou -1 (neutre).
 var team: int = -1
+## Cases occupées en plus de `cell` (bâtiments de plusieurs cases : Barricade).
+var extra_cells: Array[Vector2i] = []
 
 
 func _enter_tree() -> void:
@@ -17,7 +19,29 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	if map:
-		map.remove_object(cell, self)
+		for c in occupied_cells():
+			map.remove_object(c, self)
+
+
+func occupied_cells() -> Array[Vector2i]:
+	var out: Array[Vector2i] = [cell]
+	out.append_array(extra_cells)
+	return out
+
+
+## Occupe aussi les cases `cells` (en plus de `cell`).
+func occupy_extra(cells: Array) -> void:
+	for c in cells:
+		extra_cells.append(c)
+		map.add_object(c, self)
+
+
+## Distance (en cases) entre `c` et la case occupée la plus proche.
+func distance_from(c: Vector2i) -> int:
+	var best := 1 << 30
+	for oc in occupied_cells():
+		best = mini(best, CombatSystem.grid_distance(c, oc))
+	return best
 
 
 func place_on(p_map: GameMap, p_cell: Vector2i) -> void:
@@ -72,7 +96,8 @@ func crew_share(delta: float, n: int) -> float:
 
 func remove() -> void:
 	if map:
-		map.remove_object(cell, self)
+		for c in occupied_cells():
+			map.remove_object(c, self)
 	queue_free()
 
 

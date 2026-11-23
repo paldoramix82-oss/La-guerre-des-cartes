@@ -133,6 +133,18 @@ func _on_click(world_pos: Vector2, shift: bool, alt: bool) -> void:
 		return
 	if obj is Building and obj.team == controlled_team and not alt:
 		var helps_build: bool = not obj.is_complete and selected.any(func(s): return s.data.is_worker)
+		# Unités choisies + clic sur une Cabane Garde : elles s'y installent.
+		if obj.garrison and obj.is_complete and not selected.is_empty():
+			var placed := 0
+			for s in selected:
+				if s.garrison != obj and s.garrison != null:
+					s.leave_garrison()
+				if obj.garrison.can_enter(s) and obj.garrison.send(s):
+					placed += 1
+			notify.emit("%d escouade(s) placée(s) dans la Cabane Garde (%d / %d)." % [placed, obj.garrison.count(), obj.garrison.capacity()]
+					if placed > 0 else "Cabane Garde pleine (%d individus au plus)." % obj.garrison.capacity())
+			_show_marker(obj.position, COLOR_WORK)
+			return
 		if not helps_build:
 			select_building(obj)
 			return
@@ -339,6 +351,9 @@ func move_selected_to(world_pos: Vector2) -> void:
 ## Déplacement de groupe : une case libre par individu autour du point visé ;
 ## les escouades les plus proches prennent les cases les plus centrales.
 func _move_group(movers: Array, world_pos: Vector2) -> void:
+	for s in movers:
+		if s.garrison != null:
+			s.leave_garrison()
 	var center := map.world_to_cell(world_pos)
 	var center_world := map.cell_to_world(center)
 	movers.sort_custom(func(a, b): return a.center().distance_squared_to(center_world) < b.center().distance_squared_to(center_world))
@@ -400,8 +415,10 @@ func _draw_build_ghost() -> void:
 	var center := map.cell_to_world(cell)
 	var half := GameConfig.TILE_SIZE * 0.5
 	var col := Color(0.4, 1, 0.4) if ok else Color(1, 0.35, 0.3)
-	draw_rect(Rect2(center - Vector2(half, half), Vector2(half, half) * 2), Color(col, 0.25))
-	draw_rect(Rect2(center - Vector2(half, half), Vector2(half, half) * 2), col, false, 2.0)
+	for c in build_data.footprint_cells(cell):
+		var cc := map.cell_to_world(c)
+		draw_rect(Rect2(cc - Vector2(half, half), Vector2(half, half) * 2), Color(col, 0.25))
+		draw_rect(Rect2(cc - Vector2(half, half), Vector2(half, half) * 2), col, false, 2.0)
 	if build_data.sprite:
 		var tex := build_data.sprite
 		var size := tex.get_size() * (2.0 if tex.get_size().x <= 16 else 1.0)

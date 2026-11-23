@@ -134,6 +134,9 @@ func _on_hud_command(cmd: StringName) -> void:
 			var b := selection.selected_building
 			if cards.player(selection.controlled_team).pending:
 				cards.player(selection.controlled_team).cancel_pending()
+			elif is_instance_valid(b) and b.garrison and not b.garrison.squads.is_empty():
+				b.garrison.release_all()
+				selection.notify.emit("Les gardes sortent de la Cabane Garde.")
 			elif is_instance_valid(b) and not b.queue.is_empty():
 				var u := economy.cancel_recruit(b)
 				selection.notify.emit("Recrutement annulé : %s (remboursé)." % u.display_name)

@@ -27,6 +27,8 @@ var selected := false:
 		queue_redraw()
 ## Tourelle (défenses : Tour Archer, Canon, Cabane Garde, Mortier), ou null.
 var turret: DefenseTurret = null
+## Abri (Cabane Garde) : unités placées à l'intérieur, ou null.
+var garrison: Garrison = null
 var _flash := 0.0
 
 
@@ -36,7 +38,10 @@ func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i) 
 	hp = data.hp
 	name = "%s_%d_%d" % [data.id, p_cell.x, p_cell.y]
 	place_on(p_map, p_cell)
-	if data.damage > 0 and data.attack_range > 0 and data.category == BuildingData.Category.DEFENSE:
+	occupy_extra(data.footprint_cells(p_cell).slice(1))
+	if data.garrison_capacity > 0:
+		garrison = Garrison.new(self)
+	elif data.damage > 0 and data.attack_range > 0 and data.category == BuildingData.Category.DEFENSE:
 		turret = DefenseTurret.new(self)
 	if work_needed() <= 0.0:
 		_complete()
@@ -44,8 +49,15 @@ func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i) 
 
 
 func _physics_process(delta: float) -> void:
+	tick(delta)
+
+
+## Avance la défense / l'abri / l'effet de touche (appelable par les tests).
+func tick(delta: float) -> void:
 	if turret and is_complete and fed:
 		turret.tick(delta)
+	if garrison and is_complete:
+		garrison.tick(delta)
 	if _flash > 0.0:
 		_flash -= delta
 		queue_redraw()
@@ -76,6 +88,8 @@ func take_damage(amount: int, attacker_team: int = -1) -> void:
 	if hp <= 0:
 		hp = 0
 		Effects.burst(self, [position], Color(0.9, 0.6, 0.3))
+		if garrison:
+			garrison.release_all()
 		destroyed.emit(self)
 		remove()
 
@@ -168,6 +182,11 @@ func _draw() -> void:
 	elif not fed:
 		tint = Color(0.55, 0.55, 0.55)
 	_draw_sprite(data.sprite, tint)
+	for c in extra_cells:
+		draw_set_transform(Vector2(c - cell) * GameConfig.TILE_SIZE)
+		draw_rect(Rect2(Vector2(-half + 2, -half + 2), Vector2(GameConfig.TILE_SIZE - 4, GameConfig.TILE_SIZE - 4)), Color(team_color, 0.35))
+		_draw_sprite(data.sprite, tint)
+		draw_set_transform(Vector2.ZERO)
 	if not is_complete:
 		var bar := Rect2(Vector2(-half + 4, -half - 2), Vector2(GameConfig.TILE_SIZE - 8, 4))
 		draw_rect(bar.grow(1), Color(0, 0, 0, 0.7))

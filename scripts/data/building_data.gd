@@ -21,8 +21,10 @@ enum Category {
 @export_group("Caractéristiques")
 ## PV (pour un bâtiment à plusieurs occupants, PV de chacun : voir `occupants`).
 @export var hp: int = 0
-## Nombre d'occupants (Cabane Garde : 2 gardes de 50 PV / 10 dégâts).
+## Nombre d'occupants (ancien sens de « Cabane Garde : 2 x 50 PV / 2 x 10 dégâts »).
 @export var occupants: int = 1
+## Abri : nombre d'individus qu'on peut y placer (Cabane Garde). 0 = pas d'abri.
+@export var garrison_capacity: int = 0
 
 @export_group("Économie")
 ## Coût de construction.
@@ -64,6 +66,19 @@ enum Category {
 @export var unit_capacity: int = 0
 ## Déplacement en cases par tour.
 @export var move_speed: float = 0.0
+
+@export_group("Emprise")
+## Taille en cases (Barricade « 2 L » : 2 cases de long).
+@export var footprint: Vector2i = Vector2i(1, 1)
+
+
+## Cases occupées si la case principale est `cell`.
+func footprint_cells(cell: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in footprint.y:
+		for x in footprint.x:
+			out.append(cell + Vector2i(x, y))
+	return out
 
 @export_group("Règles")
 ## Le bâtiment peut être détruit (Caserne, Cabane Ouvrier, Mine : non).

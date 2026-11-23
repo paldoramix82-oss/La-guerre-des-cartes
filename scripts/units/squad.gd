@@ -28,6 +28,8 @@ var target: Squad = null
 ## Cible acquise automatiquement : pas de poursuite hors de portée.
 var _auto_target := false
 var _acquire_timer := 0.0
+## Cabane Garde à laquelle l'escouade est affectée, ou null.
+var garrison: Building = null
 ## Bâtiment ennemi attaqué, ou null.
 var target_building: Building = null
 ## Objet travaillé (gisement ou chantier).
@@ -220,6 +222,23 @@ func order_work(obj) -> bool:
 	return true
 
 
+## Placer l'escouade dans une Cabane Garde.
+func order_garrison(b) -> bool:
+	if not is_instance_valid(b) or not (b is Building) or b.garrison == null:
+		return false
+	return b.garrison.send(self)
+
+
+## Quitter sa Cabane Garde (l'escouade redevient libre).
+func leave_garrison() -> void:
+	if is_instance_valid(garrison) and garrison.garrison:
+		garrison.garrison.squads.erase(self)
+	garrison = null
+	sheltered = false
+	for m in members:
+		m.visible = true
+
+
 func order_stop() -> void:
 	work_target = null
 	target_building = null
@@ -244,6 +263,9 @@ func tick(delta: float) -> void:
 		if is_instance_valid(m) and m.is_alive():
 			m.tick(delta)
 	if not is_alive() or not is_fed():
+		return
+	# Dans une Cabane Garde : la cabane décide quand sortir.
+	if sheltered and garrison != null:
 		return
 	# Unités à distance : garder ses distances (sauf déplacement ordonné par le joueur).
 	if data.attack_range >= 2 and state != State.MOVING:

@@ -309,6 +309,10 @@ static func _building_info(b: Building) -> String:
 		lines.append("Production / tour : " + ResourceTypes.format(b.data.production))
 	if not b.data.upkeep.is_empty():
 		lines.append("Consommation / tour : " + ResourceTypes.format(b.data.upkeep))
+	if b.garrison:
+		lines.append("Gardes : %d / %d individus — unités choisies + clic sur la cabane pour les y placer" % [
+				b.garrison.count(), b.garrison.capacity()])
+		lines.append("Ils sortent défendre quand un ennemi entre dans sa vision. ⊘ : faire sortir les gardes.")
 	if not b.data.recruit_per_turn.is_empty():
 		lines.append("File : %d / %d individus" % [b.queued_individuals(), GameConfig.BARRACKS_CAPACITY])
 		if b.queue.is_empty():
@@ -325,7 +329,9 @@ static func _building_info(b: Building) -> String:
 static func _status(s: Squad) -> String:
 	var status: String = ["Repos", "Déplacement", "Soin" if s.data.action == UnitData.ActionType.HEAL else "Combat",
 			"Construction" if s.work_target is Building else "Récolte"][s.state]
-	if s.sheltered:
+	if s.sheltered and s.garrison:
+		status = "En garde dans une Cabane Garde"
+	elif s.sheltered:
 		status = "Caché dans sa cabane"
 	elif not s.is_fed():
 		status = "À l'arrêt (sans nourriture)"

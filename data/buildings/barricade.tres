@@ -16,6 +16,7 @@ cost = {
 &"gold": 10
 }
 build_turns = 0
-design_notes = "Barricade : 50 PV, bloque le passage. « 2 L » (longueur 2 cases ?) à préciser : 1 case pour l'instant."
+design_notes = "Barricade : 50 PV, bloque le passage, 2 cases de long (« 2 L », décision de l'auteur)."
 sprite = ExtResource("2_sprite")
 player_buildable = true
+footprint = Vector2i(2, 1)

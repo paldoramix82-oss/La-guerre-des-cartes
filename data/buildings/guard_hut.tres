@@ -21,10 +21,11 @@ cost = {
 &"gold": 20
 }
 build_turns = 1
-design_notes = "Cabane Garde : 2 gardes de 50 PV et 10 dégâts (2 tirs), portée 3, 2 Nourri / tour. Intervalle de tir : [PROVISOIRE]."
+design_notes = "Cabane Garde (décision de l'auteur) : on y place des unités, qui sortent défendre quand un ennemi entre dans sa vision. Capacité 2 individus (« 2 x ») : [PROVISOIRE]. Bank, Moulin et Entrepôt viennent avec leurs cabanes (5, 2, 3)."
 sprite = ExtResource("2_sprite")
 projectile = ExtResource("3_proj")
 projectile_color = Color(0.9, 0.9, 1, 1)
 projectile_angle = -0.785398
 attack_interval = 3.0
 player_buildable = true
+garrison_capacity = 2

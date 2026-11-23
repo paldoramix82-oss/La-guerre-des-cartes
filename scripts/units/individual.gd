@@ -257,7 +257,7 @@ func update_work(delta: float, obj: MapObject, fed: bool) -> void:
 
 ## Attaque d'un bâtiment : se place à portée, puis frappe à chaque intervalle.
 func update_siege(delta: float, b: Building) -> void:
-	if CombatSystem.grid_distance(get_cell(), b.cell) <= data.attack_range:
+	if b.distance_from(get_cell()) <= data.attack_range:
 		if is_moving() and map.is_free(get_cell(), self):
 			path.clear()
 			_reserve(get_cell())
