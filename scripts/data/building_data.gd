@@ -72,9 +72,32 @@ enum Category {
 @export var footprint: Vector2i = Vector2i(1, 1)
 
 
-## Cases occupées si la case principale est `cell`.
-func footprint_cells(cell: Vector2i) -> Array[Vector2i]:
+## La forme peut être tournée et pliée à la pose (Barricade : droite horizontale,
+## verticale, ou coin de 3 cases — décision de l'auteur : « tourner et plier »).
+@export var rotatable: bool = false
+
+## Formes d'une pièce de 2 cases : droites, puis coins (angle + une case de chaque côté).
+const ROTATED_SHAPES := [
+	[Vector2i(0, 0), Vector2i(1, 0)],
+	[Vector2i(0, 0), Vector2i(0, 1)],
+	[Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
+	[Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, 1)],
+	[Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1)],
+	[Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, -1)],
+]
+
+
+func shape_count() -> int:
+	return ROTATED_SHAPES.size() if rotatable else 1
+
+
+## Cases occupées si la case principale est `cell` (forme `rotation` si orientable).
+func footprint_cells(cell: Vector2i, rotation: int = 0) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
+	if rotatable:
+		for off in ROTATED_SHAPES[posmod(rotation, ROTATED_SHAPES.size())]:
+			out.append(cell + off)
+		return out
 	for y in footprint.y:
 		for x in footprint.x:
 			out.append(cell + Vector2i(x, y))

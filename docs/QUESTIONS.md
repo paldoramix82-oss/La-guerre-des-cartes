@@ -8,7 +8,7 @@ Répondez en vrac, même partiellement. Les réponses déjà données sont dans 
 1. **Défenses** : temps entre deux tirs (actuel : Tour Archer 3 s, Canon 5 s, Cabane Garde 3 s,
    Mortier 6 s) ? Où peut-on les construire (actuel : dans son royaume seulement) ?
 2. **Cabane Garde** : combien d'individus peut-elle abriter (actuel : 2) ? Garde-t-elle 50 PV ?
-   La Barricade est posée à l'horizontale : faut-il pouvoir la tourner ?
+   Barricade en coin : elle occupe 3 cases (l'angle + une de chaque côté) pour le même coût — correct ?
 4. Les **monstres** attaquent-ils les bâtiments ? Une **Maison détruite** fait-elle perdre ses 5 habitants ?
    (les Maisons sont sans PV pour l'instant, donc indestructibles)
 6. **Golem** : valeur de sa résistance aux attaques physiques ?

@@ -32,13 +32,18 @@ var garrison: Garrison = null
 var _flash := 0.0
 
 
-func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i) -> Building:
+## Forme choisie à la pose (bâtiments orientables : Barricade).
+var rotation_index := 0
+
+
+func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i, p_rotation: int = 0) -> Building:
+	rotation_index = p_rotation
 	data = p_data
 	team = p_team
 	hp = data.hp
 	name = "%s_%d_%d" % [data.id, p_cell.x, p_cell.y]
 	place_on(p_map, p_cell)
-	occupy_extra(data.footprint_cells(p_cell).slice(1))
+	occupy_extra(data.footprint_cells(p_cell, rotation_index).slice(1))
 	if data.garrison_capacity > 0:
 		garrison = Garrison.new(self)
 	elif data.damage > 0 and data.attack_range > 0 and data.category == BuildingData.Category.DEFENSE:

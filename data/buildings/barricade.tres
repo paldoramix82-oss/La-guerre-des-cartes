@@ -16,7 +16,8 @@ cost = {
 &"gold": 10
 }
 build_turns = 0
-design_notes = "Barricade : 50 PV, bloque le passage, 2 cases de long (« 2 L », décision de l'auteur)."
+design_notes = "Barricade : 50 PV, bloque le passage, 2 cases de long (« 2 L ») ; se tourne et se plie pour faire des coins (décisions de l'auteur)."
 sprite = ExtResource("2_sprite")
 player_buildable = true
 footprint = Vector2i(2, 1)
+rotatable = true

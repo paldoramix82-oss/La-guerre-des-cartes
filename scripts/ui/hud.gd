@@ -377,6 +377,7 @@ func show_notice(text: String) -> void:
 
 func on_build_mode_changed(data: BuildingData) -> void:
 	if data:
-		show_notice("Placer : %s — clic dans votre royaume · Échap pour annuler" % data.display_name)
+		var turn := " · recliquez sur son bouton (ou R) pour tourner / faire un coin" if data.rotatable else ""
+		show_notice("Placer : %s — clic dans votre royaume · Échap pour annuler%s" % [data.display_name, turn])
 	else:
 		_notice_time = 0.0

@@ -133,10 +133,10 @@ func _pay_squad_upkeep() -> void:
 # --- Construction -------------------------------------------------------------
 
 ## Raison pour laquelle `data` ne peut pas être placé sur `cell` par `team` ("" si possible).
-func placement_error(data: BuildingData, team: int, cell: Vector2i) -> String:
+func placement_error(data: BuildingData, team: int, cell: Vector2i, rotation: int = 0) -> String:
 	if not data.player_buildable:
 		return "Ce bâtiment ne se construit pas encore."
-	for c in data.footprint_cells(cell):
+	for c in data.footprint_cells(cell, rotation):
 		if map.kingdom_of(c) != team:
 			return "Construisez dans votre royaume."
 		if not map.is_free(c):
@@ -150,12 +150,12 @@ func placement_error(data: BuildingData, team: int, cell: Vector2i) -> String:
 
 ## Paie et place le bâtiment. Retourne null si impossible.
 ## `free` : bâtiment de départ (ni coût ni règle de placement).
-func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node = null, free: bool = false) -> Building:
+func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node = null, free: bool = false, rotation: int = 0) -> Building:
 	if free:
-		for c in data.footprint_cells(cell):
+		for c in data.footprint_cells(cell, rotation):
 			if not map.is_free(c):
 				return null
-	elif placement_error(data, team, cell) != "":
+	elif placement_error(data, team, cell, rotation) != "":
 		return null
 	else:
 		economies[team].pay(data.cost)
@@ -167,7 +167,7 @@ func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node 
 	b.destroyed.connect(_on_building_destroyed)
 	(parent if parent else self).add_child(b)
 	buildings.append(b)
-	b.setup(data, team, map, cell)
+	b.setup(data, team, map, cell, rotation)
 	building_placed.emit(b)
 	return b
 

@@ -76,6 +76,11 @@ const MINE_CAPTURE_SECONDS: float = 20.0
 ## [PROVISOIRE] Rayon (cases) de la zone de capture autour d'une mine.
 const MINE_CAPTURE_RADIUS: int = 3
 
+## IA simple aux commandes du Joueur 2 (adversaire de test).
+const AI_ENABLED := true
+## Équipe jouée par l'IA.
+const AI_TEAM := 1
+
 ## Outil de test : faire apparaître une armée de chaque côté au lancement.
 ## Désactivé : avec la consommation de nourriture, elle serait affamée en 2 tours ;
 ## les unités se recrutent maintenant à la Caserne.

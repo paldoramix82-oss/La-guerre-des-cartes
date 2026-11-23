@@ -12,6 +12,7 @@ const TEST_ARMY: Array[StringName] = [&"warrior", &"warrior", &"archer", &"caval
 var economy: EconomySystem
 var fog: FogOfWar
 var cards: CardSystem
+var ai: SimpleAI
 
 
 func _ready() -> void:
@@ -52,10 +53,15 @@ func _ready() -> void:
 	selection.map = map
 	selection.selection_changed.connect(hud.on_selection_changed)
 	selection.controlled_team_changed.connect(hud.on_team_changed)
-	selection.controlled_team_changed.connect(func(t): fog.set_team(t); camera.position = map.cell_to_world(map.base_of(t)))
+	selection.controlled_team_changed.connect(_on_team_changed)
 	hud.command.connect(_on_hud_command)
 	camera.bounds = Rect2(Vector2.ZERO, map.world_size())
 	_place_starting_buildings()
+	if GameConfig.AI_ENABLED:
+		ai = SimpleAI.new()
+		ai.name = "AI"
+		add_child(ai)
+		ai.setup(map, economy, GameConfig.AI_TEAM)
 	if GameConfig.SPAWN_TEST_ARMIES:
 		_spawn_test_armies()
 	camera.position = map.cell_to_world(map.base_of(0) + Vector2i(4, 0))
@@ -176,6 +182,14 @@ func _on_exploit_requested(mine: MineSite) -> void:
 		return
 	economy.start_exploitation(mine, selection.controlled_team)
 	selection.notify.emit("Exploitation lancée : les ouvriers libres vont construire la mine.")
+
+
+## Tab (test) : le joueur prend l'autre camp ; l'IA s'efface quand on contrôle son équipe.
+func _on_team_changed(t: int) -> void:
+	fog.set_team(t)
+	camera.position = map.cell_to_world(map.base_of(t))
+	if ai:
+		ai.enabled = t != ai.team
 
 
 ## Bouton « Nourrir » : les escouades choisies sont servies en priorité.

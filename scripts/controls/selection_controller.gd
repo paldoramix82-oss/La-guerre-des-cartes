@@ -101,6 +101,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				set_controlled_team(1 - controlled_team)
 			KEY_SPACE:
 				stop_selected()
+			KEY_R:
+				rotate_build()
 			KEY_ESCAPE:
 				cancel()
 			KEY_A:
@@ -187,9 +189,27 @@ func cancel() -> void:
 
 # --- Mode construction ---------------------------------------------------------
 
+## Forme choisie pour un bâtiment orientable (Barricade).
+var build_rotation := 0
+
+
+## Lance le mode construction. Bâtiment orientable déjà en cours de pose : un nouveau
+## clic sur son bouton fait tourner / plier la forme (comme la touche R).
 func start_build(data: BuildingData) -> void:
+	if build_data == data and data.rotatable:
+		rotate_build()
+		return
 	build_data = data
+	build_rotation = 0
 	build_mode_changed.emit(data)
+	queue_redraw()
+
+
+func rotate_build() -> void:
+	if build_data == null or not build_data.rotatable:
+		return
+	build_rotation = (build_rotation + 1) % build_data.shape_count()
+	notify.emit("Barricade : " + ["droite (horizontale)", "droite (verticale)", "coin ┌", "coin ┐", "coin ┘", "coin └"][build_rotation])
 	queue_redraw()
 
 
@@ -215,11 +235,11 @@ func _handle_build_input(event: InputEvent, world_pos: Vector2) -> bool:
 ## Pose le bâtiment en mode construction sur `cell` ; les ouvriers sélectionnés
 ## vont le construire. Maj : rester en mode construction.
 func try_place_building(cell: Vector2i, keep_mode: bool = false) -> Building:
-	var err := economy_system.placement_error(build_data, controlled_team, cell)
+	var err := economy_system.placement_error(build_data, controlled_team, cell, build_rotation)
 	if err != "":
 		notify.emit(err)
 		return null
-	var b := economy_system.place_building(build_data, controlled_team, cell, map.get_parent())
+	var b := economy_system.place_building(build_data, controlled_team, cell, map.get_parent(), false, build_rotation)
 	_show_marker(b.position, COLOR_WORK)
 	if not b.is_complete:
 		var workers := selected.filter(func(s): return s.data.is_worker)
@@ -411,11 +431,11 @@ func _draw() -> void:
 
 func _draw_build_ghost() -> void:
 	var cell := map.world_to_cell(_hover_world)
-	var ok := economy_system.placement_error(build_data, controlled_team, cell) == ""
+	var ok := economy_system.placement_error(build_data, controlled_team, cell, build_rotation) == ""
 	var center := map.cell_to_world(cell)
 	var half := GameConfig.TILE_SIZE * 0.5
 	var col := Color(0.4, 1, 0.4) if ok else Color(1, 0.35, 0.3)
-	for c in build_data.footprint_cells(cell):
+	for c in build_data.footprint_cells(cell, build_rotation):
 		var cc := map.cell_to_world(c)
 		draw_rect(Rect2(cc - Vector2(half, half), Vector2(half, half) * 2), Color(col, 0.25))
 		draw_rect(Rect2(cc - Vector2(half, half), Vector2(half, half) * 2), col, false, 2.0)

@@ -18,7 +18,7 @@ Château, roi et conditions de victoire : en attente des valeurs de l'auteur.
 | Canon | 150 | 40 | 4 | | 5 s |
 | Cabane Garde | 50 | (ses gardes) | vision 3 | abri pour 2 individus *, consomme 2 Nourri / tour | — |
 | Mortier | 125 | 30 | 2 à 6 | zone de 2 cases alignées | 6 s |
-| Barricade | 50 | — | — | bloque le passage, 2 cases de long | — |
+| Barricade | 50 | — | — | bloque le passage, 2 cases de long ; se tourne et se plie (coins) | — |
 
 \* provisoire.
 
@@ -27,6 +27,10 @@ Château, roi et conditions de victoire : en attente des valeurs de l'auteur.
 - Tir automatique sur l'ennemi le plus proche à portée (joueur adverse ou monstre) ; ne tire pas si la
   défense n'est pas nourrie. Une défense voit jusqu'à sa portée (brouillard).
 - Défense choisie : sa portée est affichée.
+
+### Barricade (décision de l'auteur)
+- 2 cases de long ; à la pose, **recliquer sur son bouton** (ou touche R) fait tourner la forme :
+  horizontale, verticale, puis 4 coins (l'angle + une case de chaque côté, soit 3 cases).
 
 ### Cabane Garde (décision de l'auteur)
 - On y **place des unités** : escouades choisies + clic sur la cabane (2 individus au plus *).

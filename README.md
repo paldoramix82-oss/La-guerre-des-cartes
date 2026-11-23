@@ -9,6 +9,7 @@ RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros �
 - **Prototype 4** (monstres, mines) — [`docs/PROTOTYPE_4.md`](docs/PROTOTYPE_4.md)
 - **Prototype 7** (défenses, bâtiments attaquables — en cours) — [`docs/PROTOTYPE_7.md`](docs/PROTOTYPE_7.md)
 - **Prototype 5** (mana, cartes) — [`docs/PROTOTYPE_5.md`](docs/PROTOTYPE_5.md)
+- **IA simple** (Joueur 2) — [`docs/IA.md`](docs/IA.md)
 - **Questions en attente** — [`docs/QUESTIONS.md`](docs/QUESTIONS.md)
 - Carte immense et brouillard de guerre — [`docs/CARTE.md`](docs/CARTE.md)
 - Valeurs de jeu — [`docs/VALEURS.md`](docs/VALEURS.md)
@@ -40,7 +41,8 @@ Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
 | Pause / accélérer | Boutons en haut à droite (touche P) |
 | Déplacer la vue | Glisser à deux doigts · flèches · ZQSD (AZERTY) / WASD |
 | Zoom / vue | Pincer · **+** / **−** près de la mini-carte · clic sur la mini-carte |
-| Contrôler l'autre joueur (test) | Touche Tab |
+| Contrôler l'autre joueur (test, désactive l'IA) | Touche Tab |
+| Tourner une barricade | Recliquer sur son bouton pendant la pose (ou R) |
 
 Le clic droit (ou clic à deux doigts) reste disponible comme ordre direct.
 

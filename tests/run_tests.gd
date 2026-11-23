@@ -74,6 +74,8 @@ func _run_all() -> void:
 	_test_guard_hut_garrison()
 	_test_bank_comes_with_guard_huts()
 	_test_barricade_two_cells()
+	_test_barricade_rotation()
+	_test_simple_ai()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -1477,4 +1479,54 @@ func _test_barricade_two_cells() -> void:
 		if o.is_queued_for_deletion():
 			o.free()
 	check(map.is_walkable(Vector2i(9, 33)), "barricade détruite : le passage est libre")
+	_clear_economy(e)
+
+
+## Barricade : se tourne et se plie (coins).
+func _test_barricade_rotation() -> void:
+	var data := BuildingDatabase.get_building(&"barricade")
+	check(data.rotatable and data.shape_count() == 6, "barricade : 6 formes (2 droites, 4 coins)")
+	check(data.footprint_cells(Vector2i(5, 5), 1) == [Vector2i(5, 5), Vector2i(5, 6)], "verticale")
+	check(data.footprint_cells(Vector2i(5, 5), 2) == [Vector2i(5, 5), Vector2i(6, 5), Vector2i(5, 6)], "coin : angle + une case de chaque côté")
+	var e := _new_economy()
+	e.economy(0).amounts[&"metal"] = 25
+	var corner := e.place_building(data, 0, Vector2i(8, 20), null, false, 4)
+	check(corner != null and corner.occupied_cells().size() == 3 and not map.is_walkable(Vector2i(7, 20)) and not map.is_walkable(Vector2i(8, 19)),
+			"coin posé : 3 cases bloquées")
+	var sel := SelectionController.new()
+	sel.map = map
+	sel.economy_system = e
+	root.add_child(sel)
+	sel.start_build(data)
+	sel.start_build(data)
+	check(sel.build_rotation == 1, "recliquer sur le bouton Barricade : la forme tourne")
+	sel.free()
+	_clear_economy(e)
+
+
+## IA simple : elle récolte, construit et recrute avec les règles du joueur.
+func _test_simple_ai() -> void:
+	var e := _new_economy()
+	var ai := SimpleAI.new()
+	root.add_child(ai)
+	ai.setup(map, e, 1)
+	var hut := e.place_building(BuildingDatabase.get_building(&"worker_hut"), 1, Vector2i(51, 14), null, true)
+	var w := _spawn_worker(1, Vector2i(52, 14), hut)
+	ai.tick(2.0)
+	check(e.buildings_of(1).any(func(b): return b.data.id == &"crop"), "IA : pose sa première Culture")
+	ai.tick(2.0)
+	check(w.state == Squad.State.WORKING, "IA : son ouvrier va construire")
+	var b := e.place_building(BuildingDatabase.get_building(&"barracks"), 1, Vector2i(55, 20), null, true)
+	b._complete()
+	e.economy(1).amounts[&"food"] = 100
+	ai._recruit_index = 0
+	ai.tick(2.0)
+	check(true, "IA : aucune erreur au recrutement")
+	var army := spawn(&"warrior", 1, Vector2i(50, 20))
+	army.state = Squad.State.IDLE
+	var intruder := spawn(&"archer", 0, Vector2i(47, 18))
+	intruder.state = Squad.State.MOVING
+	ai.tick(2.0)
+	check(army.state == Squad.State.ACTING and army.target == intruder, "IA : défend sa base contre un intrus")
+	ai.free()
 	_clear_economy(e)

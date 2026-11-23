@@ -251,6 +251,9 @@ func update_work(delta: float, obj: MapObject, fed: bool) -> void:
 	if _repath_timer <= 0.0 or not is_moving():
 		_repath_timer = GameConfig.REPATH_INTERVAL
 		var dest := map.free_cell_in_range(obj.cell, 1, get_cell(), self)
+		if dest == NO_CELL:
+			# Plus de place à côté : s'approcher et attendre qu'une case se libère.
+			dest = map.free_cell_in_range(obj.cell, 3, get_cell(), self)
 		if dest != NO_CELL and (dest != reserved_cell or not is_moving()):
 			move_to(dest)
 
