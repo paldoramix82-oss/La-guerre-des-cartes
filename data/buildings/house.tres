@@ -20,4 +20,4 @@ upkeep = {
 }
 sprite = ExtResource("2_sprite")
 player_buildable = true
-design_notes = "Maison de villageois : +5 habitants, consomme 2 Nourri / tour (valeurs de l'auteur). Coût (30 Gd, 5 Bs), 1 tour de construction et PV : [PROVISOIRE]."
+design_notes = "Maison de villageois : +5 habitants (d'un coup), consomme 2 Nourri / tour, 30 Gd + 5 Bs, 1 tour (valeurs validées par l'auteur)."

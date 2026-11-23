@@ -255,6 +255,29 @@ func update_work(delta: float, obj: MapObject, fed: bool) -> void:
 			move_to(dest)
 
 
+## Attaque d'un bâtiment : se place à portée, puis frappe à chaque intervalle.
+func update_siege(delta: float, b: Building) -> void:
+	if CombatSystem.grid_distance(get_cell(), b.cell) <= data.attack_range:
+		if is_moving() and map.is_free(get_cell(), self):
+			path.clear()
+			_reserve(get_cell())
+		if not is_moving() and _cooldown <= 0.0:
+			_face(b.position)
+			if data.projectile:
+				Effects.projectile(self, position + Vector2(0, -6), b.position, data.projectile, data.projectile_color, data.projectile_angle)
+			else:
+				_start_lunge(b.position)
+			b.take_damage(data.damage, team)
+			_cooldown = data.attack_interval
+		return
+	_repath_timer -= delta
+	if _repath_timer <= 0.0 or not is_moving():
+		_repath_timer = GameConfig.REPATH_INTERVAL
+		var dest := map.free_cell_in_range(b.cell, data.attack_range, get_cell(), self)
+		if dest != NO_CELL and (dest != reserved_cell or not is_moving()):
+			move_to(dest)
+
+
 # --- Unités à distance : garder ses distances (décision de l'auteur) ----------------------
 
 const KITE_CHECK_INTERVAL := 0.4

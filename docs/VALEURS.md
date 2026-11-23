@@ -39,7 +39,7 @@ Monstres : voir `docs/PROTOTYPE_4.md`.
 | Production | Ferme | 125 | — | 25 Nourri, 2 O | 50 Gd, 8 Bs, 6 O | 2 | 0 | 2 Nourri |
 | Production | Mine | — | — | 5 Ml + 1 lingot (10 Gd) | 75 Gd, 5 Bs, 3 Ml (exploitation) | 2 | 0 | 3 Nourri |
 | Logement | Cabane Ouvrier | — | 1 ouvrier | — | 2 Bs | immédiate | — | 3 Nourri |
-| Logement | Maison | — | +5 habitants | — | 30 Gd, 5 Bs * | 1 * | — | 2 Nourri |
+| Logement | Maison | — | +5 habitants | — | 30 Gd, 5 Bs | 1 | — | 2 Nourri |
 | Militaire | Caserne | — | — | — | 100 Gd | — | — | — |
 
 Caserne — cadence de recrutement par tour : 4 Guerriers, 2 Archers, 2 Cavaliers, 2 Mineurs, 1 Soigneur, 1 Mage.

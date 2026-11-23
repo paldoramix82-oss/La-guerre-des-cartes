@@ -98,7 +98,8 @@ func _vision_sources(t: int) -> Array:
 			out.append([m.get_cell(), int(m.data.move_speed) + GameConfig.VISION_BONUS])
 	for o in get_tree().get_nodes_in_group(MapObject.GROUP):
 		if o is Building and o.team == t and o.is_complete:
-			out.append([o.cell, GameConfig.BUILDING_VISION])
+			# Une défense voit au moins jusqu'à sa portée.
+			out.append([o.cell, maxi(GameConfig.BUILDING_VISION, o.data.attack_range if o.turret else 0)])
 	return out
 
 

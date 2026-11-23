@@ -69,6 +69,8 @@ func _run_all() -> void:
 	_test_crew_halves_time()
 	_test_tree_progress_kept()
 	_test_ranged_keep_distance()
+	_test_buildings_take_damage()
+	_test_defenses_fire()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -592,8 +594,9 @@ func _test_placement_rules() -> void:
 	var poor := e.economy(0)
 	poor.amounts[&"gold"] = 10
 	check(e.placement_error(crop, 0, Vector2i(4, 4)) == "Ressources insuffisantes.", "ressources insuffisantes")
-	check(e.placement_error(BuildingDatabase.get_building(&"archer_tower"), 0, Vector2i(4, 4)) != "",
-			"défenses pas encore constructibles")
+	poor.amounts[&"gold"] = 500
+	check(e.placement_error(BuildingDatabase.get_building(&"archer_tower"), 0, Vector2i(4, 4)) == "",
+			"défenses constructibles dans son royaume")
 	_clear_economy(e)
 
 
@@ -1356,3 +1359,70 @@ func _test_ranged_keep_distance() -> void:
 	_run_ticks([g], 1.0)
 	check(g.members[0].get_cell() == Vector2i(20, 25), "guerrier (corps à corps) : ne recule pas")
 	_clear_squads()
+
+
+# --- Bâtiments attaquables et défenses ------------------------------------------------
+
+func _test_buildings_take_damage() -> void:
+	var e := _new_economy()
+	e.economy(1).amounts[&"gold"] = 1000
+	e.economy(1).amounts[&"wood"] = 50
+	var wh := e.place_building(BuildingDatabase.get_building(&"warehouse"), 1, Vector2i(50, 10))
+	wh._complete()
+	check(e.economy(1).capacity(&"wood") == 100, "entrepôt ennemi terminé : +50 Bs de stockage")
+	var hut := e.place_building(BuildingDatabase.get_building(&"worker_hut"), 1, Vector2i(50, 14))
+	var w := spawn(&"warrior", 0, Vector2i(47, 10))
+	check(not w.order_attack_building(hut), "cabane d'ouvrier (sans PV) : indestructible")
+	check(w.order_attack_building(wh), "attaque d'un bâtiment ennemi")
+	_run_world(e, [w], 4.0)
+	check(wh.hp < 125, "le bâtiment perd des PV (%d / 125)" % wh.hp)
+	_run_world(e, [w], 20.0)
+	check(not is_instance_valid(wh) or wh.is_queued_for_deletion() or wh.hp <= 0, "125 PV : l'entrepôt est détruit")
+	check(e.economy(1).capacity(&"wood") == 50, "bâtiment détruit : sa capacité de stockage disparaît")
+	check(w.state == Squad.State.IDLE, "l'escouade s'arrête une fois le bâtiment détruit")
+	_clear_economy(e)
+
+
+func _defense(e: EconomySystem, id: StringName, cell: Vector2i) -> Building:
+	e.economy(0).amounts[&"gold"] = 1000
+	e.economy(0).amounts[&"wood"] = 50
+	e.economy(0).amounts[&"metal"] = 25
+	var b := e.place_building(BuildingDatabase.get_building(id), 0, cell)
+	b._complete()
+	return b
+
+
+func _test_defenses_fire() -> void:
+	var e := _new_economy()
+	var tower := _defense(e, &"archer_tower", Vector2i(5, 5))
+	check(tower.turret != null and tower.data.damage == 20 and tower.data.attack_range == 7, "tour archer : 20 dégâts, portée 7")
+	var near := spawn(&"warrior", 1, Vector2i(12, 5), [Vector2i(12, 5)])
+	var far := spawn(&"warrior", 1, Vector2i(13, 8), [Vector2i(13, 8)])
+	near.state = Squad.State.MOVING
+	far.state = Squad.State.MOVING
+	tower._physics_process(0.05)
+	check(near.members[0].hp == 30 and far.members[0].hp == 50, "tire à 7 cases, pas à 8")
+	tower.set_fed(false)
+	near.members[0].hp = 50
+	tower.turret.cooldown = 0.0
+	tower._physics_process(0.05)
+	check(near.members[0].hp == 50, "défense non nourrie : elle ne tire pas")
+	_clear_squads()
+	var hut := _defense(e, &"guard_hut", Vector2i(5, 20))
+	var w := spawn(&"warrior", 1, Vector2i(7, 20), [Vector2i(7, 20)])
+	w.state = Squad.State.MOVING
+	hut._physics_process(0.05)
+	check(w.members[0].hp == 30, "cabane garde : 2 gardes, 2 x 10 dégâts")
+	_clear_squads()
+	var mortar := _defense(e, &"mortar", Vector2i(5, 28))
+	var close := spawn(&"warrior", 1, Vector2i(6, 28), [Vector2i(6, 28)])
+	close.state = Squad.State.MOVING
+	mortar._physics_process(0.05)
+	check(close.members[0].hp == 50, "mortier : ne tire pas à moins de 2 cases")
+	var pair := spawn(&"warrior", 1, Vector2i(9, 28), [Vector2i(9, 28), Vector2i(10, 28)])
+	pair.state = Squad.State.MOVING
+	mortar.turret.cooldown = 0.0
+	mortar._physics_process(0.05)
+	check(pair.members[0].hp == 20 and pair.members[1].hp == 20, "mortier : 30 dégâts sur 2 cases alignées")
+	_clear_squads()
+	_clear_economy(e)

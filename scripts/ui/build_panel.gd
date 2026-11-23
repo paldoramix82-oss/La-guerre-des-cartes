@@ -26,6 +26,9 @@ var economy_system: EconomySystem
 var mine: MineSite = null
 var team := 0
 var tab: Tab = Tab.CONSTRUCTION
+## Page affichée (8 cases par page) ; flèches de la maquette pour changer de page.
+var page := 0
+var _all_items: Array = []
 var _tab_buttons: Array[TextureButton] = []
 var _slots: Array[Button] = []
 ## Contenu de chaque case : BuildingData, UnitData ou null.
@@ -66,7 +69,16 @@ func _ready() -> void:
 			s.mouse_entered.connect(func(): hovered.emit(_describe(idx)))
 			s.mouse_exited.connect(func(): hovered.emit(""))
 			_slots.append(s)
+	# Flèches de défilement de la maquette.
+	UiUtil.hotspot(self, Rect2(383, 52, 26, 30), "Page précédente").pressed.connect(func(): _scroll(-1))
+	UiUtil.hotspot(self, Rect2(383, 176, 26, 30), "Page suivante").pressed.connect(func(): _scroll(1))
 	set_tab(Tab.CONSTRUCTION)
+
+
+func _scroll(dir: int) -> void:
+	var pages := maxi(1, ceili(_all_items.size() / float(_slots.size())))
+	page = clampi(page + dir, 0, pages - 1)
+	_show_page()
 
 
 func set_mine(m: MineSite) -> void:
@@ -94,12 +106,20 @@ func set_tab(t: int) -> void:
 			var units := UnitDatabase.load_all().values().filter(func(u): return not u.cost.is_empty())
 			units.sort_custom(func(a, b): return a.display_name < b.display_name)
 			_slot_items = units
+	_all_items = _slot_items
+	page = 0
+	_show_page()
+
+
+func _show_page() -> void:
+	var start := page * _slots.size()
+	_slot_items = _all_items.slice(start, start + _slots.size())
 	for i in _slots.size():
 		var item = _slot_items[i] if i < _slot_items.size() else null
 		_slots[i].visible = item != null
 		if item:
 			_slots[i].icon = item.sprite
-			_slots[i].text = "Exploiter" if item.id == MineSite.DATA_ID else item.display_name
+			_slots[i].text = "Exploiter" if item is BuildingData and item.id == MineSite.DATA_ID else item.display_name
 	refresh()
 
 

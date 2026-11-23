@@ -312,11 +312,13 @@ func issue_order_at(world_pos: Vector2) -> void:
 			acted = true
 		elif clicked == null and obj != null and s.order_work(obj):
 			acted = true
+		elif clicked == null and obj is Building and obj.team != controlled_team and obj.visible and s.order_attack_building(obj):
+			acted = true
 		else:
 			movers.append(s)
 	if acted:
 		if clicked == null:
-			_show_marker(obj.position, COLOR_WORK)
+			_show_marker(obj.position, COLOR_ATTACK if obj is Building and obj.team != controlled_team else COLOR_WORK)
 		else:
 			_show_marker(world_pos, COLOR_ATTACK if clicked.team != controlled_team else COLOR_HEAL)
 	if movers.is_empty():

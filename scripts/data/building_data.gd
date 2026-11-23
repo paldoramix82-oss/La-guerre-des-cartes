@@ -52,6 +52,12 @@ enum Category {
 @export var min_range: int = 0
 ## Taille de zone (Mortier : 2 zone).
 @export var zone_size: int = 0
+## [PROVISOIRE] Temps entre deux tirs, en secondes (non défini par l'auteur).
+@export var attack_interval: float = 3.0
+## Projectile affiché à chaque tir.
+@export var projectile: Texture2D
+@export var projectile_color: Color = Color.WHITE
+@export var projectile_angle: float = 0.0
 
 @export_group("Siège")
 ## Nombre d'unités transportées / servant la machine.

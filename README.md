@@ -7,6 +7,7 @@ RTS 1v1 mêlant gestion de royaume, jungle façon MOBA, deckbuilding et héros �
 - **Prototype 2** (ressources, ouvriers, constructions) — [`docs/PROTOTYPE_2.md`](docs/PROTOTYPE_2.md)
 - **Prototype 3** (recrutement, nourriture des unités) — [`docs/PROTOTYPE_3.md`](docs/PROTOTYPE_3.md)
 - **Prototype 4** (monstres, mines) — [`docs/PROTOTYPE_4.md`](docs/PROTOTYPE_4.md)
+- **Prototype 7** (défenses, bâtiments attaquables — en cours) — [`docs/PROTOTYPE_7.md`](docs/PROTOTYPE_7.md)
 - **Prototype 5** (mana, cartes) — [`docs/PROTOTYPE_5.md`](docs/PROTOTYPE_5.md)
 - **Questions en attente** — [`docs/QUESTIONS.md`](docs/QUESTIONS.md)
 - Carte immense et brouillard de guerre — [`docs/CARTE.md`](docs/CARTE.md)
@@ -30,6 +31,7 @@ Jouable entièrement au trackpad (Mac), sans clic droit ni molette :
 | Recruter | Clic sur votre Caserne, puis une unité de l'onglet **Recrutement** |
 | Nourrir en priorité | Escouades choisies, puis bouton rond du milieu (commandes) |
 | Exploiter une mine capturée | Clic sur la mine, onglet Construction : Exploiter |
+| Attaquer un bâtiment | Escouades choisies, puis clic sur le bâtiment ennemi |
 | Annuler un recrutement | Caserne choisie, bouton ⊘ |
 | Jouer une carte | Clic sur la carte (Destruction / Bannissement : puis clic sur la carte cible) |
 | Récolter / aider à construire | Ouvriers choisis, puis clic sur un gisement / un chantier |

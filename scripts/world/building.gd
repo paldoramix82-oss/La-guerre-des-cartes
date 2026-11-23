@@ -7,6 +7,8 @@ extends MapObject
 signal completed(building: Building)
 ## Fin d'un recrutement (Caserne) : la scène fait apparaître l'escouade.
 signal recruited(building: Building, unit: UnitData)
+## Détruit (PV à 0) : il disparaît de la carte.
+signal destroyed(building: Building)
 
 var data: BuildingData
 ## Travail accompli (secondes-ouvrier).
@@ -23,6 +25,9 @@ var selected := false:
 	set(value):
 		selected = value
 		queue_redraw()
+## Tourelle (défenses : Tour Archer, Canon, Cabane Garde, Mortier), ou null.
+var turret: DefenseTurret = null
+var _flash := 0.0
 
 
 func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i) -> Building:
@@ -31,9 +36,48 @@ func setup(p_data: BuildingData, p_team: int, p_map: GameMap, p_cell: Vector2i) 
 	hp = data.hp
 	name = "%s_%d_%d" % [data.id, p_cell.x, p_cell.y]
 	place_on(p_map, p_cell)
+	if data.damage > 0 and data.attack_range > 0 and data.category == BuildingData.Category.DEFENSE:
+		turret = DefenseTurret.new(self)
 	if work_needed() <= 0.0:
 		_complete()
 	return self
+
+
+func _physics_process(delta: float) -> void:
+	if turret and is_complete and fed:
+		turret.tick(delta)
+	if _flash > 0.0:
+		_flash -= delta
+		queue_redraw()
+
+
+# --- Dégâts ---------------------------------------------------------------------------
+
+## Peut être attaqué et détruit (bâtiments sans PV : indestructibles — décision de l'auteur).
+func is_attackable() -> bool:
+	return data.destructible and data.hp > 0 and hp > 0
+
+
+func is_alive() -> bool:
+	return hp > 0 or not is_attackable_kind()
+
+
+func is_attackable_kind() -> bool:
+	return data.destructible and data.hp > 0
+
+
+func take_damage(amount: int, attacker_team: int = -1) -> void:
+	if not is_attackable() or amount <= 0:
+		return
+	hp -= amount
+	_flash = 0.15
+	Effects.floating_text(self, position, "-%d" % amount, Color(1, 0.4, 0.35))
+	queue_redraw()
+	if hp <= 0:
+		hp = 0
+		Effects.burst(self, [position], Color(0.9, 0.6, 0.3))
+		destroyed.emit(self)
+		remove()
 
 
 func work_needed() -> float:
@@ -117,7 +161,9 @@ func _draw() -> void:
 	if selected:
 		draw_rect(Rect2(Vector2(-half, -half), Vector2(GameConfig.TILE_SIZE, GameConfig.TILE_SIZE)), Color.WHITE, false, 2.0)
 	var tint := Color.WHITE
-	if not is_complete:
+	if _flash > 0.0:
+		tint = Color(1.8, 1.8, 1.8)
+	elif not is_complete:
 		tint = Color(1, 1, 1, 0.45)
 	elif not fed:
 		tint = Color(0.55, 0.55, 0.55)
@@ -135,3 +181,10 @@ func _draw() -> void:
 	elif not fed:
 		draw_string(ThemeDB.fallback_font, Vector2(-half, -half + 4), "!", HORIZONTAL_ALIGNMENT_CENTER,
 				GameConfig.TILE_SIZE, 16, Color(1, 0.4, 0.3))
+	# Barre de PV (bâtiment endommagé).
+	if is_attackable_kind() and hp < data.hp and is_complete:
+		var hb := Rect2(Vector2(-half + 4, half - 3), Vector2(GameConfig.TILE_SIZE - 8, 3))
+		draw_rect(hb.grow(1), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(hb.position, Vector2(hb.size.x * float(hp) / data.hp, hb.size.y)), team_color.lerp(Color.WHITE, 0.2))
+	if turret and selected:
+		draw_arc(Vector2.ZERO, (data.attack_range + 0.5) * GameConfig.TILE_SIZE, 0, TAU, 48, Color(team_color, 0.5), 1.5)

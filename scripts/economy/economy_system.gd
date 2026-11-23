@@ -162,6 +162,7 @@ func place_building(data: BuildingData, team: int, cell: Vector2i, parent: Node 
 	var b := Building.new()
 	b.completed.connect(_on_building_completed)
 	b.recruited.connect(func(bb, u): squad_recruited.emit(bb, u))
+	b.destroyed.connect(_on_building_destroyed)
 	(parent if parent else self).add_child(b)
 	buildings.append(b)
 	b.setup(data, team, map, cell)
@@ -231,10 +232,15 @@ func _on_building_completed(b: Building) -> void:
 		workers_requested.emit(b, b.data.workers)
 
 
+func _on_building_destroyed(b: Building) -> void:
+	buildings.erase(b)
+	_refresh_storage(b.team)
+
+
 func _refresh_storage(team: int) -> void:
 	var extra := {}
 	for b in buildings:
-		if is_instance_valid(b) and b.team == team and b.is_complete:
+		if is_instance_valid(b) and b.team == team and b.is_complete and b.is_alive():
 			for r in b.data.storage:
 				extra[r] = extra.get(r, 0) + b.data.storage[r]
 	economies[team].set_extra_storage(extra)

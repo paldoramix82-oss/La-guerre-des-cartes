@@ -28,6 +28,8 @@ var target: Squad = null
 ## Cible acquise automatiquement : pas de poursuite hors de portée.
 var _auto_target := false
 var _acquire_timer := 0.0
+## Bâtiment ennemi attaqué, ou null.
+var target_building: Building = null
 ## Objet travaillé (gisement ou chantier).
 var work_target: MapObject = null
 ## Type du dernier gisement récolté (pour enchaîner sur un gisement voisin).
@@ -157,6 +159,7 @@ func order_move(cell: Vector2i) -> void:
 func order_move_cells(dest_cells: Array) -> void:
 	target = null
 	work_target = null
+	target_building = null
 	_auto_target = false
 	var remaining := dest_cells.duplicate()
 	for m in members:
@@ -179,8 +182,25 @@ func order_move_cells(dest_cells: Array) -> void:
 func order_target(other) -> bool:
 	if not CombatSystem.can_target(self, other):
 		return false
+	target_building = null
 	target = other
 	_auto_target = false
+	state = State.ACTING
+	return true
+
+
+## Attaque le bâtiment ennemi `b` (bâtiments avec PV seulement).
+func order_attack_building(b) -> bool:
+	if not is_instance_valid(b) or not (b is Building) or b.team == team or not b.is_attackable():
+		return false
+	if data.action != UnitData.ActionType.ATTACK or data.damage <= 0:
+		return false
+	target = null
+	work_target = null
+	_auto_target = false
+	target_building = b
+	for m in members:
+		m.target = null
 	state = State.ACTING
 	return true
 
@@ -202,6 +222,7 @@ func order_work(obj) -> bool:
 
 func order_stop() -> void:
 	work_target = null
+	target_building = null
 	target = null
 	_auto_target = false
 	for m in members:
@@ -252,6 +273,14 @@ func tick(delta: float) -> void:
 
 
 func _process_action(delta: float) -> void:
+	if target_building != null:
+		if not is_instance_valid(target_building) or not target_building.is_attackable():
+			order_stop()
+			return
+		for m in members.duplicate():
+			if is_instance_valid(m) and m.is_alive():
+				m.update_siege(delta, target_building)
+		return
 	if not CombatSystem.can_target(self, target) \
 			or (data.action == UnitData.ActionType.HEAL and not target.is_wounded()):
 		order_stop()
