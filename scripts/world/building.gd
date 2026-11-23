@@ -1,8 +1,7 @@
 class_name Building
 extends MapObject
-## Bâtiment d'un joueur. Construit par des ouvriers adjacents : chaque ouvrier
-## apporte une unité de travail par seconde ; il faut `build_turns` tours de
-## travail (plus il y a d'ouvriers, plus c'est rapide). Une fois terminé, il
+## Bâtiment d'un joueur. Construit par des ouvriers adjacents : il faut `build_turns`
+## tours de travail pour un ouvrier ; chaque ouvrier en plus divise le temps par 2. Une fois terminé, il
 ## stocke / produit / consomme selon ses données (géré par EconomySystem).
 
 signal completed(building: Building)
@@ -48,7 +47,7 @@ func can_be_worked_by(squad: Squad) -> bool:
 func work(_worker: Individual, delta: float) -> bool:
 	if is_complete:
 		return false
-	progress += delta
+	progress += crew_share(delta, crew())
 	queue_redraw()
 	if progress >= work_needed():
 		_complete()

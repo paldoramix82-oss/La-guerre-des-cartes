@@ -224,6 +224,11 @@ func tick(delta: float) -> void:
 			m.tick(delta)
 	if not is_alive() or not is_fed():
 		return
+	# Unités à distance : garder ses distances (sauf déplacement ordonné par le joueur).
+	if data.attack_range >= 2 and state != State.MOVING:
+		for m in members:
+			if is_instance_valid(m) and m.is_alive():
+				m.keep_distance(delta)
 	if data.is_worker:
 		_threat_timer -= delta
 		if _threat_timer <= 0.0:

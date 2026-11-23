@@ -8,14 +8,18 @@ extends MapObject
 ## - **exploitation** : après capture, payer le coût de la Mine (data/buildings/mine.tres)
 ##   puis la faire construire par des ouvriers (2 tours) — une seule fois : une mine
 ##   reprise s'exploite sans reconstruire ;
-## - **production** : 5 métal + 1 lingot (10 Gd) par tour, consommation 3 Nourri / tour,
-##   inépuisable (géré par EconomySystem).
+## - **production** : 5 métal + 1 lingot (10 Gd) à chaque cycle ; cycle de 20 s (1 tour)
+##   sans mineur, 15 / 12 / 10 s avec 1 / 2 / 3 mineurs (3 au plus par mine) ;
+##   inépuisable ; consommation 3 Nourri / tour (payée par EconomySystem).
 
 signal captured(mine: MineSite, team: int)
 
 const SPRITE := "res://assets/sprites/props/well.png"
 const CENTRAL_SPRITE := "res://assets/sprites/props/well_magic.png"
 const DATA_ID := &"mine"
+## Durée d'un cycle de production (s) selon le nombre de mineurs (0 à 3) — valeurs de l'auteur.
+const MINER_CYCLE := [20.0, 15.0, 12.0, 10.0]
+const MAX_MINERS := 3
 
 var is_central := false
 var data: BuildingData
@@ -28,6 +32,7 @@ var exploit_progress := 0.0
 var exploited := false
 ## Entretien payé ce tour-ci.
 var fed := true
+var _production_timer := 0.0
 var selected := false:
 	set(value):
 		selected = value
@@ -63,6 +68,7 @@ func teams_present() -> Array:
 
 
 func tick(delta: float) -> void:
+	_tick_production(delta)
 	var teams := teams_present()
 	# Capture possible : un seul camp présent, qui est un joueur et pas déjà propriétaire.
 	if teams.size() == 1 and teams[0] != GameConfig.MONSTER_TEAM and teams[0] != team:
@@ -83,6 +89,19 @@ func tick(delta: float) -> void:
 		queue_redraw()
 
 
+## Production : à chaque cycle, 5 métal + 1 lingot pour le propriétaire (si nourrie).
+func _tick_production(delta: float) -> void:
+	if not is_producing() or not fed or not is_inside_tree():
+		return
+	_production_timer += delta
+	var cycle := production_cycle()
+	if _production_timer >= cycle:
+		_production_timer -= cycle
+		var eco := get_tree().get_first_node_in_group(EconomySystem.GROUP) as EconomySystem
+		if eco:
+			eco.economy(team).add_all(data.production)
+
+
 # --- Exploitation ----------------------------------------------------------------------
 
 func needs_exploitation() -> bool:
@@ -90,7 +109,32 @@ func needs_exploitation() -> bool:
 
 
 func can_be_worked_by(squad: Squad) -> bool:
-	return exploit_started and not exploited and squad.data.is_worker and squad.team == team
+	if squad.team != team:
+		return false
+	if exploit_started and not exploited:
+		return squad.data.is_worker
+	if exploited and squad.data.can_mine:
+		return squad.work_target == self or assigned_miners() + squad.alive_count() <= MAX_MINERS
+	return false
+
+
+## Mineurs envoyés dans cette mine (en route ou au travail).
+func assigned_miners() -> int:
+	var n := 0
+	if is_inside_tree():
+		for s in get_tree().get_nodes_in_group(Squad.GROUP):
+			if s.work_target == self and s.data.can_mine:
+				n += s.alive_count()
+	return n
+
+
+## Mineurs au travail (à côté de la mine).
+func active_miners() -> int:
+	return mini(crew_count(func(s): return s.data.can_mine), MAX_MINERS)
+
+
+func production_cycle() -> float:
+	return MINER_CYCLE[active_miners()]
 
 
 func work_needed() -> float:
@@ -100,7 +144,9 @@ func work_needed() -> float:
 func work(_worker: Individual, delta: float) -> bool:
 	if not can_be_worked_by(_worker.squad):
 		return false
-	exploit_progress += delta
+	if exploited:
+		return true  # mineur : sa présence accélère la production (voir tick)
+	exploit_progress += crew_share(delta, crew(func(s): return s.data.is_worker))
 	queue_redraw()
 	if exploit_progress >= work_needed():
 		exploited = true

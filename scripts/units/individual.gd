@@ -211,6 +211,8 @@ func update_action(delta: float, target_squad, chase: bool) -> bool:
 			target = t
 	if target == null:
 		return false
+	if retreating and is_moving():
+		return CombatSystem.in_range(self, target)  # recule d'abord, tire ensuite
 	if CombatSystem.in_range(self, target):
 		# Ne s'arrête que sur une case qui lui est disponible.
 		if is_moving() and map.is_free(get_cell(), self):
@@ -251,6 +253,62 @@ func update_work(delta: float, obj: MapObject, fed: bool) -> void:
 		var dest := map.free_cell_in_range(obj.cell, 1, get_cell(), self)
 		if dest != NO_CELL and (dest != reserved_cell or not is_moving()):
 			move_to(dest)
+
+
+# --- Unités à distance : garder ses distances (décision de l'auteur) ----------------------
+
+const KITE_CHECK_INTERVAL := 0.4
+## Recul en cours (une unité à distance s'écarte d'un ennemi trop proche).
+var retreating := false
+var _kite_timer := 0.0
+
+
+## Archer, Mage, Soigneur : si un ennemi est plus près que leur portée, ils reculent vers
+## une case libre plus éloignée (en gardant si possible leur cible à portée).
+## Retourne true si un recul commence.
+func keep_distance(delta: float) -> bool:
+	if retreating and not is_moving():
+		retreating = false
+	if data.attack_range < 2 or retreating:
+		return false
+	_kite_timer -= delta
+	if _kite_timer > 0.0:
+		return false
+	_kite_timer = KITE_CHECK_INTERVAL
+	var here := get_cell()
+	var threat_cell := Vector2i(-1, -1)
+	var d := 1 << 30
+	for n in get_tree().get_nodes_in_group(GROUP):
+		var o := n as Individual
+		if o == null or o.team == team or not o.is_alive() or o.squad.sheltered or o.data.damage <= 0:
+			continue
+		var od := CombatSystem.grid_distance(here, o.get_cell())
+		if od < d:
+			d = od
+			threat_cell = o.get_cell()
+	if d >= data.attack_range:
+		return false
+	var best := NO_CELL
+	var best_score := float(d)
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var c := here + Vector2i(dx, dy)
+			if c == here or not map.is_free(c, self):
+				continue
+			var cd := CombatSystem.grid_distance(c, threat_cell)
+			if cd <= d:
+				continue
+			var score := float(cd) - 0.1 * Vector2(dx, dy).length()
+			if is_instance_valid(target) and CombatSystem.grid_distance(c, target.get_cell()) <= data.attack_range:
+				score += 0.5
+			if score > best_score:
+				best_score = score
+				best = c
+	if best == NO_CELL:
+		return false
+	move_to(best)
+	retreating = true
+	return true
 
 
 ## Cible valide à portée la plus proche dans `squad_ref` (ou la plus proche tout court si `allow_far`).

@@ -32,13 +32,15 @@ ressource, pour les futurs bâtiments de mana.
   la reprend de la même façon ; des unités laissées sur place la gardent.
 - **Exploitation** : choisir sa mine → onglet Construction → **Exploiter** (75 Gd, 5 Bs, 3 Ml) ;
   les ouvriers libres la construisent (2 tours). Une seule fois : pas de reconstruction après une reprise.
-- **Production** : 5 métal + 1 lingot (10 Gd) par tour, inépuisable ; consomme 3 Nourri par tour.
+- **Production** : 5 métal + 1 lingot (10 Gd) par cycle, inépuisable ; consomme 3 Nourri par tour.
+  Cycle : 20 s sans mineur, 15 / 12 / 10 s avec 1 / 2 / 3 **mineurs** (3 au plus). Mineurs choisis +
+  clic sur sa mine exploitée : ils y travaillent.
+
+Validés par l'auteur : capture 20 s dans une zone de 3 cases ; territoires slimes 4, loups 8, ours 5, golem 4.
 
 ## Valeurs PROVISOIRES
 
 | Sujet | Valeur | Où |
 |---|---|---|
-| Rayon des territoires | slimes 4, loups 8, ours 5, golem 4 cases | `data/camps/*.tres` |
 | Pause entre deux promenades | 4 à 9 s | `MonsterCamp.WANDER_MIN / MAX` |
-| Capture d'une mine | 20 s de présence, zone de 3 cases | `GameConfig.MINE_CAPTURE_*` |
 | Répartition des camps | quarts selon la distance au centre | `main.gd` |

@@ -41,6 +41,35 @@ func work(_worker: Individual, _delta: float) -> bool:
 	return false
 
 
+## Nombre d'individus qui travaillent cet objet en ce moment (adjacents, arrêtés,
+## nourris). `filter(squad)` restreint (ex. mineurs).
+func crew(filter: Callable = Callable()) -> int:
+	return maxi(crew_count(filter), 1)
+
+
+## Comme `crew`, mais peut valoir 0.
+func crew_count(filter: Callable = Callable()) -> int:
+	if not is_inside_tree():
+		return 0
+	var n := 0
+	for s in get_tree().get_nodes_in_group(Squad.GROUP):
+		if s.work_target != self or s.sheltered or not s.is_fed():
+			continue
+		if filter.is_valid() and not filter.call(s):
+			continue
+		for m in s.members:
+			if is_instance_valid(m) and not m.is_moving() and CombatSystem.grid_distance(m.get_cell(), cell) == 1:
+				n += 1
+	return n
+
+
+## Travail d'une équipe (décision de l'auteur) : chaque ouvrier en plus divise le
+## temps par 2 (1 ouvrier : temps normal, 2 : moitié, 3 : quart...).
+## Retourne la part d'avancement apportée par UN ouvrier pendant `delta`.
+func crew_share(delta: float, n: int) -> float:
+	return delta * pow(2.0, n - 1) / n
+
+
 func remove() -> void:
 	if map:
 		map.remove_object(cell, self)

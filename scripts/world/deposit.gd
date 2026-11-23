@@ -9,8 +9,8 @@ signal depleted(deposit: Deposit)
 var data: DepositData
 var remaining: int = 0
 var economy_system: EconomySystem
-## Récolte en cours (fraction de tour), par ouvrier.
-var _progress: Dictionary = {}
+## Avancement de la récolte en cours (secondes), commun à tous les ouvriers.
+var progress := 0.0
 
 
 func setup(p_data: DepositData, p_map: GameMap, p_cell: Vector2i, p_economy: EconomySystem) -> Deposit:
@@ -36,17 +36,18 @@ func work(worker: Individual, delta: float) -> bool:
 	var econ := economy_system.economy(worker.team)
 	if econ.is_full(data.resource):
 		return true  # stock plein : l'ouvrier attend
-	var p: float = _progress.get(worker, 0.0) + delta
-	if p >= GameConfig.SECONDS_PER_TURN:
-		p -= GameConfig.SECONDS_PER_TURN
+	# L'avancement appartient à l'arbre : il ne repart pas de zéro si l'ouvrier est
+	# interrompu ou remplacé ; chaque ouvrier en plus divise le temps par 2.
+	progress += crew_share(delta, crew())
+	queue_redraw()
+	if progress >= GameConfig.SECONDS_PER_TURN:
+		progress -= GameConfig.SECONDS_PER_TURN
 		var amount := mini(data.harvest_per_turn, remaining)
 		remaining -= econ.add(data.resource, amount)
-		queue_redraw()
 		if remaining <= 0:
 			depleted.emit(self)
 			remove()
 			return false
-	_progress[worker] = p
 	return true
 
 
@@ -57,3 +58,7 @@ func _draw() -> void:
 	var bar := Rect2(Vector2(-half + 6, half - 3), Vector2(GameConfig.TILE_SIZE - 12, 3))
 	draw_rect(bar.grow(1), Color(0, 0, 0, 0.6))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(remaining) / data.amount, bar.size.y)), Color(1, 0.85, 0.3))
+	# Compte à rebours de la récolte en cours (arc qui se remplit).
+	if progress > 0.0:
+		draw_arc(Vector2(0, -half * 0.2), half * 0.55, -PI / 2, -PI / 2 + TAU * progress / GameConfig.SECONDS_PER_TURN, 24,
+				Color(0.6, 1, 0.5, 0.9), 2.0)

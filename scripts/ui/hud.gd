@@ -285,7 +285,10 @@ func _refresh_selection() -> void:
 static func _mine_info(m: MineSite) -> String:
 	var lines := ["Mine centrale" if m.is_central else "Mine"]
 	if m.exploited:
-		lines.append("Exploitée : %s par tour, consomme %s" % [ResourceTypes.format(m.data.production), ResourceTypes.format(m.data.upkeep)])
+		lines.append("Exploitée : %s toutes les %d s (%d / %d mineurs), consomme %s par tour" % [
+				ResourceTypes.format(m.data.production), int(m.production_cycle()), m.active_miners(), MineSite.MAX_MINERS,
+				ResourceTypes.format(m.data.upkeep)])
+		lines.append("Mineurs choisis + clic sur la mine : ils y travaillent (15 / 12 / 10 s).")
 		if not m.fed:
 			lines.append("Sans nourriture : à l'arrêt")
 	elif m.exploit_started:

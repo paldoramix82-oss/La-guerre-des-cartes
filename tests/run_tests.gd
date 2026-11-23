@@ -66,6 +66,9 @@ func _run_all() -> void:
 	_test_monster_leash_heal_respawn_loot()
 	_test_golem_ground_slam()
 	_test_mine_capture_and_exploitation()
+	_test_crew_halves_time()
+	_test_tree_progress_kept()
+	_test_ranged_keep_distance()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -169,9 +172,9 @@ func _list_files(path: String) -> Array[String]:
 func _test_unit_data_matches_gdd() -> void:
 	# Statistiques de l'auteur : effectif, PV, dégâts / attaque, portée, déplacement, intervalle (s).
 	var expected := {
-		&"warrior": [4, 50, 5, 1, 1.0, 2.5],
+		&"warrior": [4, 50, 5, 1, 1.5, 2.5],
 		&"archer": [2, 30, 10, 3, 2.0, 3.0],
-		&"cavalier": [2, 75, 8, 1, 4.0, 4.0],
+		&"cavalier": [2, 100, 15, 1, 4.0, 4.0],
 		&"mage": [1, 25, 6, 2, 1.0, 3.0],
 		&"healer": [1, 35, 0, 3, 2.0, 3.0],
 		&"miner": [1, 50, 5, 1, 4.0, 3.0],
@@ -191,7 +194,7 @@ func _test_unit_data_matches_gdd() -> void:
 	check(mage.burn_damage == 2 and is_equal_approx(mage.burn_seconds, 4.0), "mage : brûlure 2 PV/s pendant 4 s")
 	var dps := func(id): var u := UnitDatabase.get_unit(id); return u.squad_size * u.damage / u.attack_interval
 	check(is_equal_approx(dps.call(&"warrior"), 8.0) and is_equal_approx(dps.call(&"archer"), 20.0 / 3.0)
-			and is_equal_approx(dps.call(&"cavalier"), 4.0), "DPS d'escouade : guerrier 8, archer 6,67, cavalier 4")
+			and is_equal_approx(dps.call(&"cavalier"), 7.5), "DPS d'escouade : guerrier 8, archer 6,67, cavalier 7,5")
 	var healer := UnitDatabase.get_unit(&"healer")
 	check(healer.action == UnitData.ActionType.HEAL and healer.heal_amount == 5, "soigneur : soin de 5")
 	check(UnitDatabase.get_unit(&"miner").can_mine, "mineur : peut miner")
@@ -271,7 +274,7 @@ func _test_cavalier_circle_hits_multiple() -> void:
 	var ally := spawn(&"warrior", 0, Vector2i(10, 11), [Vector2i(10, 11)])
 	CombatSystem.perform_action(c.members[0], e.members[0])
 	var hps: Array = e.members.map(func(m): return m.hp)
-	check(hps == [42, 42, 50, 42], "cavalier : 8 dégâts à chacun des 3 guerriers adjacents, pas à celui à 3 cases (%s)" % [hps])
+	check(hps == [35, 35, 50, 35], "cavalier : 15 dégâts à chacun des 3 guerriers adjacents, pas à celui à 3 cases (%s)" % [hps])
 	check(ally.total_hp() == 50, "pas de tir allié")
 	_clear_squads()
 
@@ -1275,11 +1278,81 @@ func _test_mine_capture_and_exploitation() -> void:
 	econ.amounts[&"food"] = 80
 	var metal := econ.get_amount(&"metal")
 	gold = econ.get_amount(&"gold")
-	e.process_turn()
+	_run_all_world(GameConfig.SECONDS_PER_TURN + 0.1, [mine])
 	check(econ.get_amount(&"metal") == metal + 5 and econ.get_amount(&"gold") == gold + 10,
-			"mine : +5 métal et 1 lingot (10 Gd) par tour")
+			"mine sans mineur : 5 métal + 1 lingot (10 Gd) toutes les 20 s")
+	# Mineurs : 15 / 12 / 10 s ; 3 au plus.
+	var miners: Array = []
+	for c in [Vector2i(39, 21), Vector2i(41, 19), Vector2i(39, 19), Vector2i(41, 22)]:
+		miners.append(spawn(&"miner", 0, c, [c]))
+	for i in 3:
+		check(miners[i].order_work(mine), "mineur %d envoyé à la mine" % (i + 1))
+	check(not miners[3].order_work(mine), "4e mineur refusé : 3 au plus par mine")
+	_run_all_world(3.0, [mine])
+	check(mine.active_miners() == 3 and is_equal_approx(mine.production_cycle(), 10.0), "3 mineurs au travail : cycle de 10 s")
+	miners[2].order_stop()
+	miners[2].order_move(Vector2i(36, 25))
+	_run_all_world(1.0, [mine])
+	check(is_equal_approx(mine.production_cycle(), 12.0), "2 mineurs : 12 s")
+	metal = econ.get_amount(&"metal")
+	_run_all_world(24.1, [mine])
+	check(econ.get_amount(&"metal") >= metal + 10, "avec 2 mineurs : 2 cycles en 24 s")
 	mine.team = 1
 	mine.team = 0
 	check(mine.exploited and not mine.needs_exploitation(), "reprise : pas de reconstruction")
 	mine.free()
 	_clear_economy(e)
+
+
+## Chaque ouvrier en plus divise le temps de travail par 2.
+func _test_crew_halves_time() -> void:
+	var e := _new_economy()
+	e.economy(0).amounts[&"gold"] = 1500
+	var bank := e.place_building(BuildingDatabase.get_building(&"bank"), 0, Vector2i(6, 30))  # 4 tours
+	var ws: Array = []
+	for c in [Vector2i(5, 30), Vector2i(7, 30), Vector2i(6, 29)]:
+		var w := _spawn_worker(0, c)
+		w.order_work(bank)
+		ws.append(w)
+	_run_world(e, ws, GameConfig.SECONDS_PER_TURN - 0.5)
+	check(not bank.is_complete, "3 ouvriers : pas encore fini avant 1 tour")
+	_run_world(e, ws, 1.0)
+	check(bank.is_complete, "3 ouvriers : 4 tours divisés par 4 = 1 tour")
+	_clear_economy(e)
+
+
+## L'avancement de la récolte appartient à l'arbre : il ne repart pas de zéro.
+func _test_tree_progress_kept() -> void:
+	var e := _new_economy()
+	var tree := _deposit(&"forest", Vector2i(10, 30), e)
+	var w := _spawn_worker(0, Vector2i(9, 30))
+	w.order_work(tree)
+	_run_world(e, [w], 12.0)
+	var p := tree.progress
+	check(p > 10.0, "récolte en cours (%.1f s)" % p)
+	w.order_move(Vector2i(5, 33))
+	_run_world(e, [w], 4.0)
+	check(is_equal_approx(tree.progress, p), "ouvrier parti : l'avancement est conservé")
+	var w2 := _spawn_worker(0, Vector2i(11, 30))
+	w2.order_work(tree)
+	var wood := e.economy(0).get_amount(&"wood")
+	_run_world(e, [w2], GameConfig.SECONDS_PER_TURN - p + 0.5)
+	check(e.economy(0).get_amount(&"wood") == wood + 10, "un autre ouvrier termine la récolte commencée")
+	_clear_economy(e)
+
+
+## Archer, Mage, Soigneur reculent quand un ennemi s'approche trop.
+func _test_ranged_keep_distance() -> void:
+	var a := spawn(&"archer", 0, Vector2i(20, 20), [Vector2i(20, 20)])
+	var w := spawn(&"warrior", 1, Vector2i(21, 20), [Vector2i(21, 20)])
+	w.state = Squad.State.MOVING  # passif
+	_run_ticks([a], 3.0)
+	var d := CombatSystem.grid_distance(a.members[0].get_cell(), w.members[0].get_cell())
+	check(d >= 2, "archer : s'écarte d'un ennemi au contact (distance %d)" % d)
+	check(w.members[0].hp < 50, "puis il tire")
+	var g := spawn(&"warrior", 0, Vector2i(20, 25), [Vector2i(20, 25)])
+	var w2 := spawn(&"warrior", 1, Vector2i(21, 25), [Vector2i(21, 25)])
+	w2.state = Squad.State.MOVING
+	_run_ticks([g], 1.0)
+	check(g.members[0].get_cell() == Vector2i(20, 25), "guerrier (corps à corps) : ne recule pas")
+	_clear_squads()

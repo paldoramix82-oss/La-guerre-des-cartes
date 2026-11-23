@@ -74,7 +74,7 @@ func process_turn() -> void:
 	turn_processed.emit()
 
 
-## Mines exploitées : consommation puis production pour leur propriétaire.
+## Mines exploitées : consommation par tour (la production suit le cycle de la mine).
 func _mine_production() -> void:
 	if not is_inside_tree():
 		return
@@ -82,8 +82,6 @@ func _mine_production() -> void:
 		if o is MineSite and o.is_producing():
 			var econ := economies[o.team]
 			o.fed = o.data.upkeep.is_empty() or econ.pay_upkeep(o.data.upkeep)
-			if o.fed:
-				econ.add_all(o.data.production)
 			o.queue_redraw()
 
 
