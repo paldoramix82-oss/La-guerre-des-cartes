@@ -76,6 +76,8 @@ func _run_all() -> void:
 	_test_barricade_two_cells()
 	_test_barricade_rotation()
 	_test_simple_ai()
+	_test_squad_retaliates_together()
+	_test_auto_engage_in_vision_and_leash()
 	_test_recruitment()
 	_test_select_barracks_and_recruit_click()
 	_test_combat_effects()
@@ -179,12 +181,12 @@ func _list_files(path: String) -> Array[String]:
 func _test_unit_data_matches_gdd() -> void:
 	# Statistiques de l'auteur : effectif, PV, dégâts / attaque, portée, déplacement, intervalle (s).
 	var expected := {
-		&"warrior": [4, 50, 5, 1, 1.5, 2.5],
-		&"archer": [2, 30, 10, 3, 2.0, 3.0],
-		&"cavalier": [2, 100, 15, 1, 4.0, 4.0],
-		&"mage": [1, 25, 6, 2, 1.0, 3.0],
-		&"healer": [1, 35, 0, 3, 2.0, 3.0],
-		&"miner": [1, 50, 5, 1, 4.0, 3.0],
+		&"warrior": [4, 50, 5, 1, 1.5, 2.0],
+		&"archer": [2, 30, 10, 3, 2.0, 2.5],
+		&"cavalier": [2, 100, 15, 1, 4.0, 3.5],
+		&"mage": [1, 25, 6, 2, 1.0, 2.5],
+		&"healer": [1, 35, 0, 3, 2.0, 2.5],
+		&"miner": [1, 50, 5, 1, 4.0, 2.5],
 		&"worker": [1, 30, 0, 1, 2.0, 3.0],
 	}
 	check(UnitDatabase.load_all().size() == expected.size(), "7 unités chargées")
@@ -200,8 +202,8 @@ func _test_unit_data_matches_gdd() -> void:
 	var mage := UnitDatabase.get_unit(&"mage")
 	check(mage.burn_damage == 2 and is_equal_approx(mage.burn_seconds, 4.0), "mage : brûlure 2 PV/s pendant 4 s")
 	var dps := func(id): var u := UnitDatabase.get_unit(id); return u.squad_size * u.damage / u.attack_interval
-	check(is_equal_approx(dps.call(&"warrior"), 8.0) and is_equal_approx(dps.call(&"archer"), 20.0 / 3.0)
-			and is_equal_approx(dps.call(&"cavalier"), 7.5), "DPS d'escouade : guerrier 8, archer 6,67, cavalier 7,5")
+	check(is_equal_approx(dps.call(&"warrior"), 10.0) and is_equal_approx(dps.call(&"archer"), 8.0)
+			and is_equal_approx(dps.call(&"cavalier"), 30.0 / 3.5), "DPS d'escouade : guerrier 10, archer 8, cavalier 8,57")
 	var healer := UnitDatabase.get_unit(&"healer")
 	check(healer.action == UnitData.ActionType.HEAL and healer.heal_amount == 5, "soigneur : soin de 5")
 	check(UnitDatabase.get_unit(&"miner").can_mine, "mineur : peut miner")
@@ -1051,16 +1053,13 @@ func _test_field_cards_and_mana() -> void:
 	cs.free()
 
 
-## Un individu contourne les cases occupées (décision de l'auteur).
+## Les individus traversent les cases occupées (décision de l'auteur).
 func _test_path_avoids_occupied_cells() -> void:
 	var wall := spawn(&"warrior", 1, Vector2i(6, 9), [Vector2i(6, 8), Vector2i(6, 9), Vector2i(6, 10)])
 	var path := map.find_path(Vector2i(4, 9), Vector2i(8, 9))
-	check(not path.is_empty() and not (Vector2i(6, 9) in path) and not (Vector2i(6, 8) in path),
-			"le chemin contourne les cases occupées")
-	check(map.find_path(Vector2i(4, 9), Vector2i(8, 9)).size() >= 4, "détour : chemin plus long que la ligne droite")
+	check(path.size() == 4 and Vector2i(6, 9) in path, "le chemin traverse les cases occupées (ligne droite)")
+	check(not map.is_free(Vector2i(6, 9)), "mais on ne s'arrête pas sur une case occupée")
 	_clear_squads()
-	path = map.find_path(Vector2i(4, 9), Vector2i(8, 9))
-	check(Vector2i(6, 9) in path or Vector2i(6, 8) in path or Vector2i(6, 10) in path, "cases libérées : chemin direct")
 
 
 # --- Habitants, Caserne, rationnement ------------------------------------------------
@@ -1264,14 +1263,16 @@ func _test_mine_capture_and_exploitation() -> void:
 	var mine := MineSite.new()
 	root.add_child(mine)
 	mine.setup(map, Vector2i(40, 20), false)
-	var w := spawn(&"warrior", 0, Vector2i(41, 21))
+	# Guerrier et slime dans la zone de capture, mais hors de vue l'un de l'autre.
+	var w := spawn(&"warrior", 0, Vector2i(42, 21), [Vector2i(42, 21), Vector2i(43, 21), Vector2i(42, 22), Vector2i(43, 20)])
 	var monster := Squad.new()
 	root.add_child(monster)
-	monster.setup(MonsterDatabase.get_monster(&"slime"), GameConfig.MONSTER_TEAM, map, Vector2i(38, 19), [Vector2i(38, 19), Vector2i(38, 18)])
+	monster.setup(MonsterDatabase.get_monster(&"slime"), GameConfig.MONSTER_TEAM, map, Vector2i(37, 20), [Vector2i(37, 20), Vector2i(37, 19)])
 	monster.state = Squad.State.MOVING
 	_run_all_world(GameConfig.MINE_CAPTURE_SECONDS + 1.0, [mine])
 	check(mine.team == -1, "capture impossible tant qu'il reste des unités sur place")
-	monster.free()
+	if is_instance_valid(monster):
+		monster.free()
 	_run_all_world(GameConfig.MINE_CAPTURE_SECONDS - 1.0, [mine])
 	check(mine.team == -1 and mine.capture_progress > 0.0, "capture en cours (rester un moment)")
 	_run_all_world(1.5, [mine])
@@ -1530,3 +1531,39 @@ func _test_simple_ai() -> void:
 	check(army.state == Squad.State.ACTING and army.target == intruder, "IA : défend sa base contre un intrus")
 	ai.free()
 	_clear_economy(e)
+
+
+# --- Engagement des escouades (retour de l'auteur : « les autres restent loin ») -------
+
+## Une escouade au repos frappée de loin riposte, et TOUS ses individus vont au combat.
+func _test_squad_retaliates_together() -> void:
+	var w := spawn(&"warrior", 0, Vector2i(10, 20), [Vector2i(10, 20), Vector2i(10, 21), Vector2i(9, 20), Vector2i(9, 21)])
+	var a := spawn(&"archer", 1, Vector2i(15, 20), [Vector2i(15, 20), Vector2i(15, 22)])
+	a.state = Squad.State.MOVING  # les archers ne tirent qu'une fois (simulé)
+	CombatSystem.perform_action(a.members[0], w.members[0])
+	check(w.state == Squad.State.ACTING and w.target == a, "attaquée de loin : l'escouade riposte")
+	var hitters := {}
+	var t := 0.0
+	while t < 8.0 and is_instance_valid(a) and a.is_alive():
+		w.tick(0.05)
+		for m in w.members:
+			if m._cooldown > 0.0:
+				hitters[m] = true
+		_flush_deleted()
+		t += 0.05
+	check(not is_instance_valid(a) or not a.is_alive(), "les archers sont éliminés")
+	check(hitters.size() == 4, "les 4 guerriers ont frappé (%d)" % hitters.size())
+	_clear_squads()
+
+
+## Ennemi dans la vision : l'escouade s'engage seule ; elle abandonne s'il s'enfuit trop loin.
+func _test_auto_engage_in_vision_and_leash() -> void:
+	var w := spawn(&"warrior", 0, Vector2i(10, 26))
+	var e := spawn(&"warrior", 1, Vector2i(13, 26), [Vector2i(13, 26)])
+	e.state = Squad.State.MOVING
+	_run_ticks([w], 0.5)
+	check(w.state == Squad.State.ACTING, "ennemi à 3 cases (vision 3) : engagement automatique")
+	e.members[0].place(Vector2i(25, 26))  # s'enfuit hors de la limite de poursuite
+	_run_ticks([w], 0.5)
+	check(w.state != Squad.State.ACTING, "cible trop loin du point d'engagement : poursuite abandonnée")
+	_clear_squads()

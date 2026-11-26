@@ -13,17 +13,22 @@ mana sont en tours ; le combat et les déplacements sont en secondes.
 
 | Unité | Effectif | PV | Dégâts / attaque | Intervalle | Portée | Déplacement (cases/s) | DPS d'escouade | Coût | Nourri / tour / individu |
 |---|---|---|---|---|---|---|---|---|---|
-| Guerrier | 4 | 50 | 5 | 2,5 s | 1 | 1,5 | 8 | 4 Nourri, 50 Gd | 2 |
-| Archer | 2 | 30 | 10 | 3 s | 3 | 2 | 6,67 | 2 Nourri, 30 Gd | 1 |
-| Cavalier | 2 | 100 | 15 (8 cases autour) | 4 s | 1 | 4 | 7,5 | 5 Nourri, 100 Gd | 3 |
-| Mage | 1 | 25 | 6 + brûlure 2 PV/s pendant 4 s | 3 s | 2, zone 2 | 1 | — | 1 Nourri, 40 Gd | 1 |
-| Soigneur | 1 | 35 | soin 5 | 3 s | 3, zone 2 | 2 | — | 1 Nourri, 30 Gd | 1 |
-| Mineur | 1 | 50 | 5 | 3 s | 1 | 4 | 1,67 | 2 Nourri, 20 Gd | 2 |
+| Guerrier | 4 | 50 | 5 | 2 s | 1 | 1,5 | 10 | 4 Nourri, 50 Gd | 2 |
+| Archer | 2 | 30 | 10 | 2,5 s | 3 | 2 | 8 | 2 Nourri, 30 Gd | 1 |
+| Cavalier | 2 | 100 | 15 (8 cases autour) | 3,5 s | 1 | 4 | 8,57 | 5 Nourri, 100 Gd | 3 |
+| Mage | 1 | 25 | 6 + brûlure 2 PV/s pendant 4 s | 2,5 s | 2, zone 2 | 1 | — | 1 Nourri, 40 Gd | 1 |
+| Soigneur | 1 | 35 | soin 5 | 2,5 s | 3, zone 2 | 2 | — | 1 Nourri, 30 Gd | 1 |
+| Mineur | 1 | 50 | 5 | 2,5 s | 1 | 4 | 2 | 2 Nourri, 20 Gd | 2 |
 | Ouvrier | 1 | 30 * | — | — | — | 2 * | — | (Cabane) | nourri par sa cabane |
 
 \* provisoire. Coût de création **par escouade**. Vision = déplacement + 2 cases.
 Brûlure : relancée (pas cumulée) par le même Mage ; deux Mages différents cumulent.
-En combat, chaque individu vise l'ennemi le plus proche ; en déplacement, il contourne les cases occupées.
+Intervalles d'attaque réduits de 0,5 s (décision de l'auteur, combats plus dynamiques ; monstres inchangés).
+En combat, chaque individu vise l'ennemi le plus proche ; en déplacement, il **traverse** les cases occupées
+(seules les cases d'arrêt sont exclusives).
+**Engagement** : une escouade au repos attaque l'ennemi qu'elle voit, et riposte quand on la frappe ; tous ses
+individus vont au contact (ou à portée). Elle abandonne si la cible s'éloigne de plus de vision + 4 cases de
+l'endroit où elle s'est engagée. Un individu dont la cible est hors de portée frappe l'ennemi qui est à portée.
 Archer, Mage et Soigneur **gardent leurs distances** : ils reculent quand un ennemi est plus près que leur portée.
 
 Monstres : voir `docs/PROTOTYPE_4.md`.

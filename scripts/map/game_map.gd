@@ -203,22 +203,15 @@ func nearest_walkable(cell: Vector2i, max_radius: int = 10) -> Vector2i:
 
 
 ## Chemin de cases de `from` à `to` (exclut la case de départ).
-## Les cases occupées par d'autres individus sont contournées ; si elles bloquent
-## tout passage, le chemin les traverse (secours).
+## Les individus peuvent traverser les cases occupées par d'autres (décision de
+## l'auteur) ; seules les cases où ils s'arrêtent restent exclusives.
 func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	from = nearest_walkable(from)
 	to = nearest_walkable(to)
 	if from == to:
 		return result
-	# Départ et arrivée ne doivent pas bloquer leur propre chemin.
-	astar.set_point_solid(from, false)
-	astar.set_point_solid(to, false)
-	var ids := astar.get_id_path(from, to)
-	_update_solid(from)
-	_update_solid(to)
-	if ids.is_empty():
-		ids = astar_static.get_id_path(from, to)
+	var ids := astar_static.get_id_path(from, to)
 	for i in range(1, ids.size()):
 		result.append(ids[i])
 	return result

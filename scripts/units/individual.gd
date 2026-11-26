@@ -209,6 +209,14 @@ func update_action(delta: float, target_squad, chase: bool) -> bool:
 		var t := _pick_target(target_squad, chase)
 		if t:
 			target = t
+	# Cible hors de portée mais un ennemi juste à portée : on le frappe plutôt que d'attendre.
+	if data.action == UnitData.ActionType.ATTACK and (target == null or not CombatSystem.in_range(self, target)):
+		_scan_timer -= delta
+		if _scan_timer <= 0.0:
+			_scan_timer = SCAN_INTERVAL
+			var near := _hostile_in_range()
+			if near:
+				target = near
 	if target == null:
 		return false
 	if retreating and is_moving():
@@ -279,6 +287,26 @@ func update_siege(delta: float, b: Building) -> void:
 		var dest := map.free_cell_in_range(b.cell, data.attack_range, get_cell(), self)
 		if dest != NO_CELL and (dest != reserved_cell or not is_moving()):
 			move_to(dest)
+
+
+const SCAN_INTERVAL := 0.3
+var _scan_timer := 0.0
+
+
+## Individu hostile le plus proche déjà à portée d'attaque.
+func _hostile_in_range() -> Individual:
+	var best: Individual = null
+	var best_d := data.attack_range + 1
+	var here := get_cell()
+	for n in get_tree().get_nodes_in_group(GROUP):
+		var o := n as Individual
+		if o == null or o.team == team or not o.is_alive() or o.squad.sheltered:
+			continue
+		var d := CombatSystem.grid_distance(here, o.get_cell())
+		if d < best_d:
+			best = o
+			best_d = d
+	return best
 
 
 # --- Unités à distance : garder ses distances (décision de l'auteur) ----------------------

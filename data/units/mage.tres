@@ -30,5 +30,5 @@ upkeep = {
 projectile = ExtResource("3_proj")
 projectile_color = Color(1, 0.55, 0.2, 1)
 projectile_angle = 0.785398
-attack_interval = 3.0
+attack_interval = 2.5
 burn_seconds = 4.0

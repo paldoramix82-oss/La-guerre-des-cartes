@@ -30,4 +30,4 @@ upkeep = {
 }
 projectile = ExtResource("3_proj")
 projectile_color = Color(0.5, 1, 0.5, 1)
-attack_interval = 3.0
+attack_interval = 2.5

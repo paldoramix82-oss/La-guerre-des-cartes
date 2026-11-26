@@ -25,8 +25,12 @@ var members: Array[Individual] = []
 
 var state: State = State.IDLE
 var target: Squad = null
-## Cible acquise automatiquement : pas de poursuite hors de portée.
+## Cible acquise automatiquement (sans ordre du joueur) : poursuite limitée.
 var _auto_target := false
+## Case où l'escouade s'est engagée d'elle-même.
+var _anchor := Vector2i.ZERO
+## Poursuite automatique : la cible peut s'éloigner jusqu'à vision + AUTO_LEASH cases du point d'engagement.
+const AUTO_LEASH := 4
 var _acquire_timer := 0.0
 ## Cabane Garde à laquelle l'escouade est affectée, ou null.
 var garrison: Building = null
@@ -308,13 +312,42 @@ func _process_action(delta: float) -> void:
 		order_stop()
 		return
 	var target_squad = target
-	var any_in_range := false
+	# Tous les individus vont au contact (ou à portée), même pour une cible choisie seuls.
 	for m in members.duplicate():
 		if is_instance_valid(m) and m.is_alive():
-			if m.update_action(delta, target_squad, not _auto_target):
-				any_in_range = true
-	if _auto_target and not any_in_range:
+			m.update_action(delta, target_squad, true)
+	if _auto_target and _beyond_leash():
 		order_stop()
+
+
+## Cible automatique trop loin du point d'engagement : on abandonne la poursuite.
+func _beyond_leash() -> bool:
+	if not is_instance_valid(target):
+		return true
+	var limit := data.vision_range() + AUTO_LEASH
+	for m in target.members:
+		if is_instance_valid(m) and CombatSystem.grid_distance(m.get_cell(), _anchor) <= limit:
+			return false
+	return true
+
+
+## Prend `other` pour cible de lui-même (riposte, ennemi en vue).
+func _engage(other) -> void:
+	if order_target(other):
+		_auto_target = true
+		_anchor = get_cell()
+
+
+## Un individu de l'escouade est frappé : l'escouade riposte si elle n'a rien de mieux
+## à faire (au repos, ou cible automatique hors d'atteinte).
+func on_attacked(attacker) -> void:
+	if data.is_worker or sheltered or not is_instance_valid(attacker) or not CombatSystem.can_target(self, attacker):
+		return
+	if state == State.IDLE:
+		_engage(attacker)
+	elif state == State.ACTING and _auto_target and target != attacker \
+			and not members.any(func(m): return is_instance_valid(m.target) and CombatSystem.in_range(m, m.target)):
+		_engage(attacker)
 
 
 func _process_work(delta: float) -> void:
@@ -344,7 +377,8 @@ func _work_next_deposit() -> void:
 		order_work(best)
 
 
-## Escouade inactive : agit sur l'escouade dont un individu valide est à portée
+## Escouade inactive : agit sur l'escouade (ennemi en vue, ou allié blessé en vue pour le
+## soin) ;  dont un individu valide est à portée
 ## d'un de ses individus (ennemi pour l'attaque, allié blessé pour le soin), sans poursuite.
 func _auto_acquire() -> void:
 	if not is_inside_tree():
@@ -361,14 +395,14 @@ func _auto_acquire() -> void:
 			continue
 		if data.action == UnitData.ActionType.HEAL and not o.is_wounded():
 			continue
+		# Un ennemi dans la vision de l'escouade (et plus seulement à portée d'attaque).
 		for m in members:
 			var d := CombatSystem.grid_distance(m.get_cell(), o.get_cell())
-			if d <= data.attack_range and d < best_d:
+			if d <= maxi(data.vision_range(), data.attack_range) and d < best_d:
 				best = o.squad
 				best_d = d
 	if best:
-		order_target(best)
-		_auto_target = true
+		_engage(best)
 
 
 # --- Ouvriers -------------------------------------------------------------------------

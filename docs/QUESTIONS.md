@@ -15,6 +15,10 @@ Répondez en vrac, même partiellement. Les réponses déjà données sont dans 
 7. **Lingot** : simplement 10 Gd (actuel), ou une ressource à part ?
 8. **Vision des bâtiments** (actuel 3 ; une défense voit jusqu'à sa portée) ?
 
+8. **Monstres** : réduire aussi leurs intervalles d'attaque de 0,5 s ? (inchangés pour l'instant)
+9. **Poursuite automatique** : une escouade abandonne une cible à plus de vision + 4 cases de l'endroit
+   où elle s'est engagée — bonne distance ?
+
 ## Plus tard
 
 - Boss (Dragon, Sorcière), cartes de récompense, liste des cartes et coûts en mana, cristaux / bâtiments de

@@ -26,4 +26,4 @@ design_notes = "Combat et minage. Le minage arrive au Prototype 2 (production de
 upkeep = {
 &"food": 2
 }
-attack_interval = 3.0
+attack_interval = 2.5

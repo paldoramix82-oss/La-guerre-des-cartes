@@ -26,4 +26,4 @@ design_notes = ""
 upkeep = {
 &"food": 2
 }
-attack_interval = 2.5
+attack_interval = 2.0

@@ -26,4 +26,4 @@ design_notes = "Portée GDD : 'Cercle 1' -> toutes les cases adjacentes. Sprite 
 upkeep = {
 &"food": 3
 }
-attack_interval = 4.0
+attack_interval = 3.5
